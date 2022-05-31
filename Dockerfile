@@ -15,10 +15,11 @@ RUN set -euxo pipefail; \
     /opt/sbt/bin/sbt sbtVersion
 COPY --chown=root:root . /tmp/bandwhichd-server/
 WORKDIR /tmp/bandwhichd-server
-RUN set -euxo pipefail; \
-    /opt/sbt/bin/sbt assembly
+RUN /opt/sbt/bin/sbt assembly
 
 FROM eclipse-temurin:17.0.3_7-jre-alpine
-COPY --from=build --chown=root:root /tmp/bandwhichd-server/target/scala-3.1.2/bandwhichd-server-assembly-0.1.0.jar /opt/bandwhichd-server.jar
+COPY --from=build --chown=root:root /tmp/bandwhichd-server/target/scala-3.1.2/bandwhichd-server-assembly-0.2.0.jar /opt/bandwhichd-server.jar
 USER guest
 ENTRYPOINT java -jar /opt/bandwhichd-server.jar
+HEALTHCHECK --interval=5s --timeout=1s --start-period=2s --retries=2 \
+    CMD wget --spider http://localhost:8080/v1/health || exit 1

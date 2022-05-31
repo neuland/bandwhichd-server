@@ -10,7 +10,6 @@ import io.circe.syntax.*
 import org.http4s.dsl.{io as _, *}
 import org.http4s.headers.*
 import org.http4s.implicits.*
-import org.http4s.server.middleware.CORS
 import org.http4s.*
 
 class StatsController[F[_]: Async](
@@ -18,10 +17,9 @@ class StatsController[F[_]: Async](
 ) extends Http4sDsl[F],
       Helpers {
   val routes: HttpRoutes[F] =
-    CORS.policy.withAllowOriginAll(HttpRoutes.of[F] {
-      case request @ GET -> Root / "v1" / "stats" =>
-        stats(request)
-    })
+    HttpRoutes.of[F] { case request @ GET -> Root / "v1" / "stats" =>
+      stats(request)
+    }
 
   private def stats(request: Request[F]): F[Response[F]] =
     for {

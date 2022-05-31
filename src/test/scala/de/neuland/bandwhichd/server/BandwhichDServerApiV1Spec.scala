@@ -22,6 +22,42 @@ class BandwhichDServerApiV1Spec
     with AsyncIOSpec
     with Matchers {
   "bandwhichd-server v1 API" should {
+    "have health status" in {
+      val request = Request[IO](
+        method = Method.GET,
+        uri = uri"/v1/health",
+        headers = Headers(
+          Header.Raw(
+            ci"origin",
+            "http://localhost:3000"
+          )
+        )
+      )
+
+      val httpApp = App[IO]().httpApp
+
+      // when
+      val eventualResult = httpApp.run(request)
+
+      // then
+      val eventualResultAndBody: IO[(Response[IO], String)] = for {
+        result <- eventualResult
+        body <- result.body.through(fs2.text.utf8.decode).compile.string
+      } yield (result, body)
+
+      eventualResultAndBody.asserting { case (result, body) =>
+        result.status shouldBe Ok
+        result.headers.headers should contain allOf (
+          Header.Raw(ci"access-control-allow-origin", "*"),
+          Header.Raw(ci"content-type", "application/json")
+        )
+        val jsonBody = io.circe.parser.parse(body).toTry.get
+        jsonBody shouldBe obj(
+          "status" -> fromString("pass")
+        )
+      }
+    }
+
     "record message v1" in {
       // given
       val request = Request[IO](

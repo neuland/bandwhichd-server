@@ -4,6 +4,7 @@ import cats.effect.*
 import cats.effect.kernel.Outcome
 import cats.implicits.*
 import de.neuland.bandwhichd.server.adapter.in.scheduler.AggregationScheduler
+import de.neuland.bandwhichd.server.adapter.in.v1.health.HealthController
 import de.neuland.bandwhichd.server.adapter.in.v1.message.MessageController
 import de.neuland.bandwhichd.server.adapter.in.v1.stats.StatsController
 import de.neuland.bandwhichd.server.adapter.out.measurement.MeasurementInMemoryRepository
@@ -46,6 +47,8 @@ class App[F[_]: Async] {
     )
 
   // in http
+  val healthController: HealthController[F] =
+    HealthController[F]
   val messageController: MessageController[F] =
     MessageController[F](
       measurementApplicationService = measurementApplicationService
@@ -64,6 +67,7 @@ class App[F[_]: Async] {
   // http
   val routes: Routes[F] =
     Routes[F](
+      healthController = healthController,
       messageController = messageController,
       statsController = statsController
     )
