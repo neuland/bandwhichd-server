@@ -1,0 +1,6 @@
+**/*
+!project/build.properties
+!project/plugins.sbt
+!src/
+!build.sbt
+!Dockerfile

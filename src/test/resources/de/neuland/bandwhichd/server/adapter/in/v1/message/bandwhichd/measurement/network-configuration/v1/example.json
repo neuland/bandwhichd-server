@@ -1,0 +1,59 @@
+{
+  "type": "bandwhichd/measurement/network-configuration/v1",
+  "content": {
+    "agent_id": "d254aebd-e092-4ced-b698-0448a46eaf7d",
+    "timestamp": "2022-05-06T15:14:51.74223728Z",
+    "machine_id": "c414c2da-714c-4b68-b97e-3f31e18053d2",
+    "hostname": "some-host.example.com",
+    "interfaces": [
+      {
+        "name": "docker0",
+        "is_up": false,
+        "networks": [
+          "172.17.0.1/16",
+          "fe80::42:a4ff:fef2:4ad4/64"
+        ]
+      },
+      {
+        "name": "enp0s31f6",
+        "is_up": false,
+        "networks": []
+      },
+      {
+        "name": "lo",
+        "is_up": true,
+        "networks": [
+          "127.0.0.1/8",
+          "::1/128"
+        ]
+      },
+      {
+        "name": "virbr0",
+        "is_up": false,
+        "networks": [
+          "192.168.122.1/24"
+        ]
+      },
+      {
+        "name": "wlp3s0",
+        "is_up": true,
+        "networks": [
+          "172.18.195.209/16",
+          "fe80::8e71:453d:204d:abf8/64"
+        ]
+      }
+    ],
+    "open_sockets": [
+      {
+        "socket_address": "0.0.0.0:68",
+        "protocol": "udp",
+        "process": "dhclient"
+      },
+      {
+        "socket_address": "[::]:37863",
+        "protocol": "tcp",
+        "process": null
+      }
+    ]
+  }
+}

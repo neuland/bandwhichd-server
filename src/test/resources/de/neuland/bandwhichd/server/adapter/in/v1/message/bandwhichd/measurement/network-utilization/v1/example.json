@@ -1,0 +1,33 @@
+{
+  "type": "bandwhichd/measurement/network-utilization/v1",
+  "content": {
+    "agent_id": "d254aebd-e092-4ced-b698-0448a46eaf7d",
+    "timeframe": "2022-05-06T15:14:51.74223728Z/PT10.000148S",
+    "connections": [
+      {
+        "interface_name": "lo",
+        "local_socket_address": "127.0.0.1:8080",
+        "remote_socket_address": "127.0.0.1:36070",
+        "protocol": "tcp",
+        "received": "608",
+        "sent": "0"
+      },
+      {
+        "interface_name": "lo",
+        "local_socket_address": "127.0.0.1:36070",
+        "remote_socket_address": "127.0.0.1:8080",
+        "protocol": "tcp",
+        "received": "0",
+        "sent": "13882"
+      },
+      {
+        "interface_name": "tun0",
+        "local_socket_address": "192.168.10.87:43254",
+        "remote_socket_address": "192.168.10.34:5353",
+        "protocol": "udp",
+        "received": "120",
+        "sent": "64"
+      }
+    ]
+  }
+}
