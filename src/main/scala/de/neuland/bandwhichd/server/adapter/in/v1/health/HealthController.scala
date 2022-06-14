@@ -1,11 +1,13 @@
 package de.neuland.bandwhichd.server.adapter.in.v1.health
 
 import cats.effect.Async
+import de.neuland.bandwhichd.server.lib.health.jvm.JvmMemoryUtilization
+import de.neuland.bandwhichd.server.lib.health.Health
+import fs2.Pure
 import io.circe.Json
 import org.http4s.dsl.Http4sDsl
 import org.http4s.implicits.*
-import org.http4s.server.middleware.CORS
-import org.http4s.{HttpRoutes, Response}
+import org.http4s.{Entity, HttpRoutes, Response, Status}
 
 class HealthController[F[_]: Async] extends Http4sDsl[F] {
   val routes: HttpRoutes[F] =
@@ -14,11 +16,22 @@ class HealthController[F[_]: Async] extends Http4sDsl[F] {
     }
 
   private def health: F[Response[F]] = {
-    import org.http4s.circe.CirceEntityEncoder.circeEntityEncoder
-    val healthStatus: Json =
-      Json.obj(
-        "status" -> Json.fromString("pass")
+    val encoder = org.http4s.circe.jsonEncoder
+
+    val currentHealth = Health(Seq(JvmMemoryUtilization.current))
+    val status: Status =
+      Status
+        .fromInt(currentHealth.httpResponseStatusCode)
+        .getOrElse(Status.InternalServerError)
+    val entity: Entity[Pure] =
+      encoder.toEntity(currentHealth.asJson)
+
+    Async[F].pure(
+      Response(
+        status = status,
+        headers = encoder.headers,
+        entity = entity
       )
-    Ok(healthStatus)
+    )
   }
 }

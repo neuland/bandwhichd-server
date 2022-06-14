@@ -52,9 +52,34 @@ class BandwhichDServerApiV1Spec
           Header.Raw(ci"content-type", "application/json")
         )
         val jsonBody = io.circe.parser.parse(body).toTry.get
-        jsonBody shouldBe obj(
-          "status" -> fromString("pass")
-        )
+        jsonBody.isObject shouldBe true
+        jsonBody.asObject.get.keys should contain("status")
+        jsonBody.asObject.get("status").get.isString shouldBe true
+        jsonBody.asObject.get("status").get.asString.get shouldBe "pass"
+        jsonBody.asObject.get.keys should contain("checks")
+        jsonBody.asObject.get("checks").get.isObject shouldBe true
+        val checks = jsonBody.asObject.get("checks").get.asObject
+        checks.get.keys should contain("memory:utilization")
+        checks.get("memory:utilization").get.isArray shouldBe true
+        checks.get("memory:utilization").get.asArray.get should have length 1
+        checks
+          .get("memory:utilization")
+          .get
+          .asArray
+          .get
+          .head
+          .isObject shouldBe true
+        val firstMemoryUtilization = checks
+          .get("memory:utilization")
+          .get
+          .asArray
+          .get
+          .head
+          .asObject
+          .get
+        firstMemoryUtilization.keys should contain("status")
+        firstMemoryUtilization("status").get.isString shouldBe true
+        firstMemoryUtilization("status").get.asString.get shouldBe "pass"
       }
     }
 

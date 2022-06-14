@@ -18,8 +18,18 @@ WORKDIR /tmp/bandwhichd-server
 RUN /opt/sbt/bin/sbt assembly
 
 FROM eclipse-temurin:17.0.3_7-jre-alpine
-COPY --from=build --chown=root:root /tmp/bandwhichd-server/target/scala-3.1.2/bandwhichd-server-assembly-0.2.0.jar /opt/bandwhichd-server.jar
+LABEL org.opencontainers.image.authors="neuland Open Source Maintainers <opensource@neuland-bfi.de>"
+LABEL org.opencontainers.image.url="https://github.com/neuland/bandwhichd-server"
+LABEL org.opencontainers.image.documentation="https://github.com/neuland/bandwhichd-server"
+LABEL org.opencontainers.image.source="https://github.com/neuland/bandwhichd-server"
+LABEL org.opencontainers.image.vendor="neuland – Büro für Informatik GmbH"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL org.opencontainers.image.title="bandwhichd-server"
+LABEL org.opencontainers.image.description="bandwhichd server collecting measurements and calculating statistics"
+LABEL org.opencontainers.image.version="0.3.0"
 USER guest
-ENTRYPOINT java -jar /opt/bandwhichd-server.jar
+ENTRYPOINT ["/opt/java/openjdk/bin/java", "-jar", "/opt/bandwhichd-server.jar"]
+EXPOSE 8080
 HEALTHCHECK --interval=5s --timeout=1s --start-period=2s --retries=2 \
     CMD wget --spider http://localhost:8080/v1/health || exit 1
+COPY --from=build --chown=root:root /tmp/bandwhichd-server/target/scala-3.1.2/bandwhichd-server-assembly-0.3.0.jar /opt/bandwhichd-server.jar
