@@ -4,6 +4,7 @@ import cats.effect.*
 import cats.effect.kernel.Outcome
 import cats.implicits.*
 import de.neuland.bandwhichd.server.adapter.in.scheduler.AggregationScheduler
+import de.neuland.bandwhichd.server.adapter.in.scheduler.MemoryScheduler
 import de.neuland.bandwhichd.server.adapter.in.v1.health.HealthController
 import de.neuland.bandwhichd.server.adapter.in.v1.message.MessageController
 import de.neuland.bandwhichd.server.adapter.in.v1.stats.StatsController
@@ -29,8 +30,10 @@ import scala.io.StdIn
 
 class App[F[_]: Async] {
   // out
-  val measurementRepository: MeasurementRepository[F] =
+  val measurementInMemoryRepository: MeasurementInMemoryRepository[F] =
     MeasurementInMemoryRepository[F]()
+  val measurementRepository: MeasurementRepository[F] =
+    measurementInMemoryRepository
   val statsRepository: StatsRepository[F] =
     StatsInMemoryRepository[F]()
 
@@ -48,7 +51,9 @@ class App[F[_]: Async] {
 
   // in http
   val healthController: HealthController[F] =
-    HealthController[F]
+    HealthController[F](
+      measurementInMemoryRepository = measurementInMemoryRepository
+    )
   val messageController: MessageController[F] =
     MessageController[F](
       measurementApplicationService = measurementApplicationService
@@ -62,6 +67,10 @@ class App[F[_]: Async] {
   val aggregationScheduler: Scheduler[F] =
     AggregationScheduler[F](
       statsApplicationService = statsApplicationService
+    )
+  val memoryScheduler: Scheduler[F] =
+    MemoryScheduler[F](
+      measurementInMemoryRepository = measurementInMemoryRepository
     )
 
   // http
@@ -78,7 +87,8 @@ class App[F[_]: Async] {
   // scheduling
   val schedulersOperator: Operator[F] =
     SchedulersOperator[F](
-      aggregationScheduler
+      aggregationScheduler,
+      memoryScheduler
     )
 }
 

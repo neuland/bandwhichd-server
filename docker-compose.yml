@@ -2,5 +2,9 @@ services:
   main:
     build:
       context: .
+    command:
+      - -Xmx1g
+      - -jar
+      - /opt/bandwhichd-server.jar
     ports:
       - 8080:8080
