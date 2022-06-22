@@ -5,7 +5,7 @@ import de.neuland.bandwhichd.server.domain.measurement.Timing.{
   Timeframe,
   Timestamp
 }
-import de.neuland.bandwhichd.server.lib.time.ZonedInterval
+import de.neuland.bandwhichd.server.lib.time.Interval
 import io.circe.{Decoder, DecodingFailure, HCursor}
 
 import java.time.{Duration, ZonedDateTime}
@@ -40,8 +40,8 @@ object DomainDecoders {
 
   val timeframeDecoder: Decoder[Timeframe] =
     (c: HCursor) =>
-      c.as[ZonedInterval](
-        de.neuland.bandwhichd.server.lib.time.circe.Decoder.zonedIntervalDecoder
+      c.as[Interval](
+        de.neuland.bandwhichd.server.lib.time.circe.Decoder.intervalDecoder
       ).map(Timeframe.apply)
 
   val timestampDecoder: Decoder[Timestamp] =

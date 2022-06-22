@@ -2,8 +2,9 @@ package de.neuland.bandwhichd.server.domain.measurement
 
 import com.comcast.ip4s.*
 import de.neuland.bandwhichd.server.domain.*
+import de.neuland.bandwhichd.server.lib.time.Interval
 
-import java.time.{Duration, ZonedDateTime}
+import java.time.{Duration, Instant, ZonedDateTime}
 import java.util.UUID
 
 object MeasurementFixtures {
@@ -100,8 +101,10 @@ object MeasurementFixtures {
       agentId =
         AgentId(UUID.fromString("d254aebd-e092-4ced-b698-0448a46eaf7d")),
       timing = Timing.Timeframe(
-        start = ZonedDateTime.parse("2022-05-06T15:14:51.74223728Z"),
-        duration = Duration.parse("PT10.000148S")
+        Interval(
+          start = Instant.parse("2022-05-06T15:14:51.74223728Z"),
+          duration = Duration.parse("PT10.000148S")
+        )
       ),
       connections = Seq(
         Connection(

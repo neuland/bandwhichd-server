@@ -1,13 +1,13 @@
 package de.neuland.bandwhichd.server.lib.time
 
 import java.time.format.{DateTimeFormatter, DateTimeParseException}
-import java.time.{Duration, ZonedDateTime}
+import java.time.{Duration, Instant, ZonedDateTime}
 import java.util.Objects
 import java.util.regex.{Matcher, Pattern}
 import scala.util.{Failure, Success, Try}
 
-case class ZonedInterval(start: ZonedDateTime, duration: Duration) {
-  def normalizedStart: ZonedDateTime =
+case class Interval(start: Instant, duration: Duration) {
+  def normalizedStart: Instant =
     if (duration.isNegative)
       start.plus(duration)
     else
@@ -16,21 +16,21 @@ case class ZonedInterval(start: ZonedDateTime, duration: Duration) {
   def normalizedDuration: Duration =
     duration.abs
 
-  def normalizedStop: ZonedDateTime =
+  def normalizedStop: Instant =
     if (duration.isNegative)
       start
     else
       start.plus(duration)
 
-  def normalized: ZonedInterval =
+  def normalized: Interval =
     if (duration.isNegative)
-      new ZonedInterval(start.plus(duration), duration.abs)
+      new Interval(start.plus(duration), duration.abs)
     else
       this
 
   override def equals(obj: Any): Boolean =
     obj match
-      case other: ZonedInterval =>
+      case other: Interval =>
         normalizedStart == other.normalizedStart && normalizedDuration == other.normalizedDuration
       case _ => false
 
@@ -41,21 +41,18 @@ case class ZonedInterval(start: ZonedDateTime, duration: Duration) {
     start.toString + "/" + duration.toString
 }
 
-object ZonedInterval {
+object Interval {
+  def apply(start: Instant, stop: Instant): Interval =
+    Interval(start = start, duration = Duration.between(start, stop))
+
   private val PATTERN = "([^/]+)/([^/]+)".r
 
-  def parse(text: CharSequence): Try[ZonedInterval] =
-    parse(text, DateTimeFormatter.ISO_ZONED_DATE_TIME)
-
-  def parse(
-      text: CharSequence,
-      startFormatter: DateTimeFormatter
-  ): Try[ZonedInterval] =
+  def parse(text: CharSequence): Try[Interval] =
     text match
       case PATTERN(startText, durationText) =>
-        val start = ZonedDateTime.parse(startText, startFormatter)
+        val start = Instant.parse(startText)
         val duration = Duration.parse(durationText)
-        Success(ZonedInterval(start, duration))
+        Success(Interval(start, duration))
       case _ =>
         Failure(
           new DateTimeParseException(

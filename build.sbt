@@ -2,11 +2,26 @@ lazy val root = (project in file("."))
   .settings(
     organization := "de.neuland-bfi",
     name := "bandwhichd-server",
-    version := "0.4.0",
+    version := "0.5.0",
     scalaVersion := "3.1.2",
     Compile / scalaSource := baseDirectory.value / "src" / "main" / "scala",
     Test / scalaSource := baseDirectory.value / "src" / "test" / "scala",
+    Test / fork := true,
+    ThisBuild / assemblyMergeStrategy := {
+      case PathList(ps @ _*) if ps.last endsWith "module-info.class" =>
+        MergeStrategy.discard
+      case PathList(ps @ _*)
+          if ps.last endsWith "io.netty.versions.properties" =>
+        MergeStrategy.discard
+      case path =>
+        val oldStrategy = (ThisBuild / assemblyMergeStrategy).value
+        oldStrategy(path)
+    },
+    libraryDependencies += "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.40.8" % "test",
+    libraryDependencies += "co.fs2" %% "fs2-core" % "3.2.8",
+    libraryDependencies += "co.fs2" %% "fs2-reactive-streams" % "3.2.8",
     libraryDependencies += "com.comcast" %% "ip4s-core" % "3.1.3",
+    libraryDependencies += "com.datastax.oss" % "java-driver-core" % "4.14.1",
     libraryDependencies += "io.circe" %% "circe-core" % "0.14.2",
     libraryDependencies += "io.circe" %% "circe-parser" % "0.14.2",
     libraryDependencies += "org.typelevel" %% "cats-effect" % "3.3.12",

@@ -1,10 +1,30 @@
+# bandwhichd-server depends on cassandra.
+# docker-compose does not detect if cassandra is up properly.
+# Additionally, the keyspace needs to be created manually for
+# now, because it is not part of the automated migrations.
+#
+# 1. Start cassandra
+#  docker-compose up --detach cassandra
+# 2. Create keyspace (it takes a while until cassandra is ready and accepts connections)
+#  docker-compose exec -- cassandra cqlsh --execute="create keyspace if not exists bandwhichd with replication = {'class': 'SimpleStrategy', 'replication_factor': 1};"
+# 3. Start bandwhichd-server
+#  docker-compose up --build --detach bandwhichd-server
+# 4. Follow logs
+#  docker-compose logs --follow
+
 services:
-  main:
+  cassandra:
+    image: cassandra:4.0.4
+    ports:
+      - 9042:9042
+  bandwhichd-server:
     build:
       context: .
     command:
       - -Xmx1g
       - -jar
       - /opt/bandwhichd-server.jar
+    environment:
+        CONTACT_POINTS: "cassandra:9042"
     ports:
       - 8080:8080

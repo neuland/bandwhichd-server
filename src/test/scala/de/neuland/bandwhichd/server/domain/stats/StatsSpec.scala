@@ -1,16 +1,19 @@
 package de.neuland.bandwhichd.server.domain.stats
 
-import cats.Id
+import fs2.Stream
+import cats.effect.IO
+import cats.implicits.*
+import cats.effect.testing.scalatest.AsyncIOSpec
 import com.comcast.ip4s.{Cidr, Host, Hostname, Ipv4Address, Port, SocketAddress}
 import de.neuland.bandwhichd.server.domain.*
 import de.neuland.bandwhichd.server.domain.measurement.*
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.wordspec.{AnyWordSpec, AsyncWordSpec}
 
 import java.time.{Duration, Instant, ZoneOffset, ZonedDateTime}
 import java.util.UUID
 
-class StatsSpec extends AnyWordSpec with Matchers {
+class StatsSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
   "Stats" when {
     "built from a network configuration" should {
 
@@ -30,23 +33,30 @@ class StatsSpec extends AnyWordSpec with Matchers {
         )
       )
 
+      val measurementsStream: Stream[IO, Measurement[Timing]] =
+        Stream.emits(measurements)
+
       // when
-      val result: Stats = Stats[Id](measurements)
+      val resultF: IO[Stats] = Stats[IO](measurementsStream)
 
       "have a host id" in {
         // then
-        result.hosts should have size 1
-        result.hosts.head.hostId shouldBe HostId(
-          MachineId(UUID.fromString("a814d0d9-3dca-4acf-985f-442dd4262228"))
-        )
+        resultF.asserting { result =>
+          result.hosts should have size 1
+          result.hosts.head.hostId shouldBe HostId(
+            MachineId(UUID.fromString("a814d0d9-3dca-4acf-985f-442dd4262228"))
+          )
+        }
       }
 
       "have the hostname" in {
         // then
-        result.hosts should have size 1
-        result.hosts.head.hostname shouldBe Hostname
-          .fromString("some-host.example.com")
-          .get
+        resultF.asserting { result =>
+          result.hosts should have size 1
+          result.hosts.head.hostname shouldBe Hostname
+            .fromString("some-host.example.com")
+            .get
+        }
       }
     }
 
@@ -80,17 +90,22 @@ class StatsSpec extends AnyWordSpec with Matchers {
         )
       )
 
+      val measurementsStream: Stream[IO, Measurement[Timing]] =
+        Stream.emits(measurements)
+
       // when
-      val result: Stats = Stats[Id](measurements)
+      val resultF: IO[Stats] = Stats[IO](measurementsStream)
 
       "not merge hosts with the same hostname" in {
         // then
-        result.hosts should have size 2
-        result.hosts.foreach(host =>
-          host.hostname shouldBe Hostname
-            .fromString("some-host.example.com")
-            .get
-        )
+        resultF.asserting { result =>
+          result.hosts.foreach(host =>
+            host.hostname shouldBe Hostname
+              .fromString("some-host.example.com")
+              .get
+          )
+          result.hosts should have size 2
+        }
       }
     }
 
@@ -124,27 +139,34 @@ class StatsSpec extends AnyWordSpec with Matchers {
         )
       )
 
+      val measurementsStream: Stream[IO, Measurement[Timing]] =
+        Stream.emits(measurements)
+
       // when
-      val result: Stats = Stats[Id](measurements)
+      val resultF: IO[Stats] = Stats[IO](measurementsStream)
 
       "merge hosts with the same agent id" in {
         // then
-        result.hosts should have size 1
-        result.hosts.head.hostId shouldBe HostId(
-          MachineId(UUID.fromString("a814d0d9-3dca-4acf-985f-442dd4262228"))
-        )
+        resultF.asserting { result =>
+          result.hosts should have size 1
+          result.hosts.head.hostId shouldBe HostId(
+            MachineId(UUID.fromString("a814d0d9-3dca-4acf-985f-442dd4262228"))
+          )
+        }
       }
 
       "have primary hostname from most recent data and keep track of other hostnames" in {
         // then
-        result.hosts should have size 1
-        result.hosts.head.hostname shouldBe Hostname
-          .fromString("some-host.example.com")
-          .get
-        result.hosts.head.additionalHostnames should have size 1
-        result.hosts.head.additionalHostnames should contain(
-          Hostname.fromString("another-host.example.com").get
-        )
+        resultF.asserting { result =>
+          result.hosts should have size 1
+          result.hosts.head.hostname shouldBe Hostname
+            .fromString("some-host.example.com")
+            .get
+          result.hosts.head.additionalHostnames should have size 1
+          result.hosts.head.additionalHostnames should contain(
+            Hostname.fromString("another-host.example.com").get
+          )
+        }
       }
     }
 
@@ -280,11 +302,16 @@ class StatsSpec extends AnyWordSpec with Matchers {
         )
       )
 
+      val measurementsStream: Stream[IO, Measurement[Timing]] =
+        Stream.emits(measurements)
+
       // when
-      val result: Stats = Stats[Id](measurements)
+      val resultF: IO[Stats] = Stats[IO](measurementsStream)
 
       def expectConnection(
           hostIds: (HostId, HostId)
+      )(
+          result: Stats
       ): (MonitoredHost, AnyHost) = {
         result.findConnection(hostIds) match
           case Some(connection) => connection
@@ -299,25 +326,30 @@ class StatsSpec extends AnyWordSpec with Matchers {
 
       "have all hosts" in {
         // then
-        result.hosts should have size 2
-        result.hosts.map(_.hostId) should contain allOf (hostId1, hostId2)
+        resultF.asserting { result =>
+          result.hosts should have size 2
+          result.hosts.map(_.hostId) should contain allOf (hostId1, hostId2)
+        }
       }
 
       "have all connections" in {
         // then
-        result.connections should have size 2
+        resultF.asserting { result =>
+          result.connections should have size 2
 
-        expectConnection(hostId1, hostId2)
+          expectConnection(hostId1, hostId2)(result)
 
-        val externalHost = Host.fromString("10.20.87.210").get
-        val externalHostId = HostId(externalHost)
-        val externalConnection = expectConnection(hostId1, externalHostId)
+          val externalHost = Host.fromString("10.20.87.210").get
+          val externalHostId = HostId(externalHost)
+          val externalConnection =
+            expectConnection(hostId1, externalHostId)(result)
 
-        externalConnection._2 match
-          case unidentifiedHost @ UnidentifiedHost(host) =>
-            host shouldBe externalHost
-            unidentifiedHost.hostId shouldBe externalHostId
-          case _ => fail("expected unidentified host")
+          externalConnection._2 match
+            case unidentifiedHost @ UnidentifiedHost(host) =>
+              host shouldBe externalHost
+              unidentifiedHost.hostId shouldBe externalHostId
+            case _ => fail("expected unidentified host")
+        }
       }
     }
   }

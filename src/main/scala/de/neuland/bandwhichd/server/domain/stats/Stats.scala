@@ -1,9 +1,12 @@
 package de.neuland.bandwhichd.server.domain.stats
 
 import cats.Monad
+import cats.effect.kernel.Concurrent
+import cats.implicits.*
 import com.comcast.ip4s.{Host, Hostname, IDN, IpAddress}
 import de.neuland.bandwhichd.server.domain.measurement.{Measurement, Timing}
 import de.neuland.bandwhichd.server.domain.{AgentId, InterfaceName}
+import fs2.Stream
 
 import java.nio.charset.StandardCharsets
 import java.nio.charset.StandardCharsets.UTF_8
@@ -22,26 +25,31 @@ case class Stats(
 }
 
 object Stats {
-  def apply[F[_]: Monad](measurements: Seq[Measurement[Timing]]): F[Stats] =
-    Monad[F].pure {
+  def apply[F[_]: Concurrent](
+      measurements: Stream[F, Measurement[Timing]]
+  ): F[Stats] =
+    for {
+      b <- {
+        measurements.compile.fold[
+          (
+              Seq[Measurement.NetworkConfiguration],
+              Seq[Measurement.NetworkUtilization]
+          )
+        ](Seq.empty -> Seq.empty) { case ((ncs, nus), m) =>
+          m match
+            case nc @ Measurement.NetworkConfiguration(_, _, _, _, _, _) =>
+              ncs.appended(nc) -> nus
+            case nu @ Measurement.NetworkUtilization(_, _, _) =>
+              ncs -> nus.appended(nu)
+        }
+      }
+    } yield {
 
       val networkConfigurationMeasurements
-          : Seq[Measurement.NetworkConfiguration] =
-        measurements.flatMap(measurement =>
-          measurement match
-            case networkConfiguration @ Measurement
-                  .NetworkConfiguration(_, _, _, _, _, _) =>
-              Seq(networkConfiguration)
-            case _ => Seq.empty
-        )
+          : Seq[Measurement.NetworkConfiguration] = b._1
 
       val networkUtilizationMeasurements: Seq[Measurement.NetworkUtilization] =
-        measurements.flatMap(measurement =>
-          measurement match
-            case networkUtilization @ Measurement.NetworkUtilization(_, _, _) =>
-              Seq(networkUtilization)
-            case _ => Seq.empty
-        )
+        b._2
 
       val hosts =
         networkConfigurationMeasurements.foldLeft[Set[MonitoredHost]](

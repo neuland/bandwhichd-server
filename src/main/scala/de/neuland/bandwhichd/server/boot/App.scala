@@ -4,11 +4,11 @@ import cats.effect.*
 import cats.effect.kernel.Outcome
 import cats.implicits.*
 import de.neuland.bandwhichd.server.adapter.in.scheduler.AggregationScheduler
-import de.neuland.bandwhichd.server.adapter.in.scheduler.MemoryScheduler
 import de.neuland.bandwhichd.server.adapter.in.v1.health.HealthController
 import de.neuland.bandwhichd.server.adapter.in.v1.message.MessageController
 import de.neuland.bandwhichd.server.adapter.in.v1.stats.StatsController
-import de.neuland.bandwhichd.server.adapter.out.measurement.MeasurementInMemoryRepository
+import de.neuland.bandwhichd.server.adapter.out.CassandraMigration
+import de.neuland.bandwhichd.server.adapter.out.measurement.MeasurementCassandraRepository
 import de.neuland.bandwhichd.server.adapter.out.stats.StatsInMemoryRepository
 import de.neuland.bandwhichd.server.application.{
   MeasurementApplicationService,
@@ -16,6 +16,7 @@ import de.neuland.bandwhichd.server.application.{
 }
 import de.neuland.bandwhichd.server.domain.measurement.MeasurementRepository
 import de.neuland.bandwhichd.server.domain.stats.StatsRepository
+import de.neuland.bandwhichd.server.lib.cassandra.CassandraContext
 import de.neuland.bandwhichd.server.lib.scheduling.{
   Operator,
   Scheduler,
@@ -28,12 +29,18 @@ import org.http4s.{HttpApp, HttpRoutes}
 
 import scala.io.StdIn
 
-class App[F[_]: Async] {
+class App[F[_]: Async](
+    private val cassandraContext: CassandraContext[F],
+    private val configuration: Configuration
+) {
   // out
-  val measurementInMemoryRepository: MeasurementInMemoryRepository[F] =
-    MeasurementInMemoryRepository[F]()
+  val measurementCassandraRepository: MeasurementCassandraRepository[F] =
+    MeasurementCassandraRepository[F](
+      cassandraContext = cassandraContext,
+      configuration = configuration
+    )
   val measurementRepository: MeasurementRepository[F] =
-    measurementInMemoryRepository
+    measurementCassandraRepository
   val statsRepository: StatsRepository[F] =
     StatsInMemoryRepository[F]()
 
@@ -51,9 +58,7 @@ class App[F[_]: Async] {
 
   // in http
   val healthController: HealthController[F] =
-    HealthController[F](
-      measurementInMemoryRepository = measurementInMemoryRepository
-    )
+    HealthController[F]()
   val messageController: MessageController[F] =
     MessageController[F](
       measurementApplicationService = measurementApplicationService
@@ -67,10 +72,6 @@ class App[F[_]: Async] {
   val aggregationScheduler: Scheduler[F] =
     AggregationScheduler[F](
       statsApplicationService = statsApplicationService
-    )
-  val memoryScheduler: Scheduler[F] =
-    MemoryScheduler[F](
-      measurementInMemoryRepository = measurementInMemoryRepository
     )
 
   // http
@@ -87,37 +88,29 @@ class App[F[_]: Async] {
   // scheduling
   val schedulersOperator: Operator[F] =
     SchedulersOperator[F](
-      aggregationScheduler,
-      memoryScheduler
+      aggregationScheduler
     )
 }
 
 object App extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
-    val main = App[IO]()
-
-    val serverResource: Resource[IO, Server] =
-      EmberServerBuilder
+    val schedulerOutcomeR = for {
+      configuration <- Configuration.resource[IO]
+      cassandraContext <- CassandraContext.resource[IO](configuration)
+      _ <- Resource.eval(
+        CassandraMigration(cassandraContext).migrate(configuration)
+      )
+      main = App[IO](cassandraContext, configuration)
+      schedulerOutcomeF <- main.schedulersOperator.resource
+      _ <- EmberServerBuilder
         .default[IO]
         .withHostOption(None)
         .withHttpApp(main.httpApp)
         .build
-
-    val schedulersResource: Resource[IO, IO[Outcome[IO, Throwable, Unit]]] =
-      main.schedulersOperator.resource
-
-    val resources = for {
-      schedulerOutcomeF <- schedulersResource
-      server <- serverResource
-    } yield (schedulerOutcomeF, server)
-
-    val schedulerOutcomeF = resources
-      .use { case (schedulerOutcomeF, _) =>
-        schedulerOutcomeF
-      }
+    } yield schedulerOutcomeF
 
     for {
-      schedulerOutcome <- schedulerOutcomeF
+      schedulerOutcome <- schedulerOutcomeR.use(identity)
     } yield {
       schedulerOutcome match
         case Outcome.Succeeded(_) =>
