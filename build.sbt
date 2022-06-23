@@ -2,7 +2,7 @@ lazy val root = (project in file("."))
   .settings(
     organization := "de.neuland-bfi",
     name := "bandwhichd-server",
-    version := "0.5.0",
+    version := "0.5.1",
     scalaVersion := "3.1.2",
     Compile / scalaSource := baseDirectory.value / "src" / "main" / "scala",
     Test / scalaSource := baseDirectory.value / "src" / "test" / "scala",

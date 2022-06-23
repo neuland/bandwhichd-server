@@ -16,127 +16,125 @@ import java.util.UUID
 import scala.util.Try
 
 object MeasurementCassandraCodecs {
-  given Encoder[Measurement[Timing]] =
-    (measurement: Measurement[Timing]) =>
-      measurement match
-        case nc: Measurement.NetworkConfiguration =>
-          Encoder[Measurement.NetworkConfiguration].mapJson(
-            _.mapObject(
-              _.add(
-                "measurement_type",
-                Json.fromString("network_configuration")
-              )
-            )
-          )(nc)
-        case nu: Measurement.NetworkUtilization =>
-          Encoder[Measurement.NetworkUtilization].mapJson(
-            _.mapObject(
-              _.add(
-                "measurement_type",
-                Json.fromString("network_utilization")
-              )
-            )
-          )(nu)
-
-  given Decoder[Measurement[Timing]] =
-    (c: HCursor) => {
-      val measurementTypeCursor = c.downField("measurement_type")
-      for {
-        measurementType <- measurementTypeCursor.as[String]
-        measurement <- {
-          measurementType match
-            case "network_configuration" =>
-              c.as[Measurement.NetworkConfiguration]
-            case "network_utilization" =>
-              c.as[Measurement.NetworkUtilization]
-            case _ =>
-              Left(
-                DecodingFailure(
-                  s"invalid measurement type $measurementType",
-                  measurementTypeCursor.history
-                )
-              )
-        }
-      } yield measurement
-    }
-
-  given Codec[Measurement.NetworkConfiguration] =
-    Codec.forProduct6(
-      "agent_id",
-      "timestamp",
-      "network_configuration_machine_id",
-      "network_configuration_hostname",
-      "network_configuration_interfaces",
-      "network_configuration_open_sockets"
-    )(
-      (
-          agentId: AgentId,
-          timestamp: Timing.Timestamp,
-          machinedId: MachineId,
-          hostname: Hostname,
-          interfaces: Seq[Interface],
-          openSockets: Seq[OpenSocket]
-      ) =>
-        Measurement.NetworkConfiguration(
-          agentId = agentId,
-          timing = timestamp,
-          machineId = machinedId,
-          hostname = hostname,
-          interfaces = interfaces,
-          openSockets = openSockets
-        )
-    )(nc =>
-      (
-        nc.agentId,
-        nc.timing,
-        nc.machineId,
-        nc.hostname,
-        nc.interfaces,
-        nc.openSockets
-      )
-    )
-
-  given Codec[Interface] =
-    Codec.forProduct3("name", "is_up", "networks")(Interface.apply)(interface =>
-      (interface.name, interface.isUp, interface.networks)
-    )
-
-  given Codec[OpenSocket] =
-    Codec.forProduct3("socket", "protocol", "maybe_process_name")(
-      OpenSocket.apply
-    )(openSocket =>
-      (openSocket.socket, openSocket.protocol, openSocket.maybeProcessName)
-    )
-
-  given Codec[Measurement.NetworkUtilization] =
-    Codec.forProduct4(
+  given Codec[Measurement[Timing]] =
+    Codec.forProduct9(
       "agent_id",
       "timestamp",
       "end_timestamp",
+      "measurement_type",
+      "network_configuration_machine_id",
+      "network_configuration_hostname",
+      "network_configuration_interfaces",
+      "network_configuration_open_sockets",
       "network_utilization_connections"
     )(
       (
           agentId: AgentId,
           timestamp: Timing.Timestamp,
           endTimestamp: Timing.Timestamp,
+          measurementType: String,
+          machinedId: MachineId,
+          hostname: Hostname,
+          interfaces: Seq[Interface],
+          openSockets: Seq[OpenSocket],
           connections: Seq[Connection]
       ) =>
-        Measurement.NetworkUtilization(
-          agentId = agentId,
-          timing = Timing.Timeframe(
-            Interval(
-              start = timestamp.instant,
-              stop = endTimestamp.instant
+        measurementType match
+          case "network_configuration" =>
+            Measurement.NetworkConfiguration(
+              agentId = agentId,
+              timing = timestamp,
+              machineId = machinedId,
+              hostname = hostname,
+              interfaces = interfaces,
+              openSockets = openSockets
             )
-          ),
-          connections = connections
+          case "network_utilization" =>
+            Measurement.NetworkUtilization(
+              agentId = agentId,
+              timing = Timing.Timeframe(
+                Interval(
+                  start = timestamp.instant,
+                  stop = endTimestamp.instant
+                )
+              ),
+              connections = connections
+            )
+          case _ =>
+            throw DecodingFailure(
+              s"invalid measurement type $measurementType",
+              List(CursorOp.DownField("measurement_type"))
+            )
+    )(_ match
+      case Measurement.NetworkConfiguration(
+            agentId,
+            timing,
+            machineId,
+            hostname,
+            interfaces,
+            openSockets
+          ) =>
+        (
+          agentId,
+          timing,
+          Timing.Timestamp(Instant.EPOCH),
+          "network_configuration",
+          machineId,
+          hostname,
+          interfaces,
+          openSockets,
+          Seq.empty[Connection]
         )
-    )(nu =>
+      case Measurement.NetworkUtilization(
+            agentId,
+            timing,
+            connections
+          ) =>
+        (
+          agentId,
+          Timing.Timestamp(timing.value.normalizedStart),
+          Timing.Timestamp(timing.value.normalizedStop),
+          "network_utilization",
+          MachineId(new UUID(0, 0)),
+          Hostname.fromString("a").get,
+          Seq.empty[Interface],
+          Seq.empty[OpenSocket],
+          connections
+        )
+    )
+
+  given Codec[Interface] =
+    Codec.forProduct3(
+      "name",
+      "is_up",
+      "networks"
+    )(Interface.apply)(interface =>
+      (interface.name, interface.isUp, interface.networks)
+    )
+
+  given Codec[OpenSocket] =
+    Codec.forProduct3(
+      "socket",
+      "protocol",
+      "maybe_process_name"
+    )(
       (
-        nu.agentId,
-        Timing.Timestamp(nu.timing.value.normalizedStart),
-        Timing.Timestamp(nu.timing.value.normalizedStop),
-        nu.connections
+          socket: SocketAddress[Host],
+          protocol: Protocol,
+          processNameValue: String
+      ) =>
+        OpenSocket(
+          socket = socket,
+          protocol = protocol,
+          maybeProcessName =
+            if (processNameValue.nonEmpty) Option(ProcessName(processNameValue))
+            else None
+        )
+    )(openSocket =>
+      (
+        openSocket.socket,
+        openSocket.protocol,
+        openSocket.maybeProcessName.fold("")(_.value)
       )
     )
 

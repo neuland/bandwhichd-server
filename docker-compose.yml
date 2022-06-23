@@ -18,6 +18,8 @@ services:
     ports:
       - 9042:9042
   bandwhichd-server:
+    depends_on:
+      - cassandra
     build:
       context: .
     command:
