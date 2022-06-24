@@ -78,6 +78,7 @@ class App[F[_]: Async](
     HealthController[F]()
   val messageController: MessageController[F] =
     MessageController[F](
+      configuration = configuration,
       measurementApplicationService = measurementApplicationService
     )
   val statsController: StatsController[F] =

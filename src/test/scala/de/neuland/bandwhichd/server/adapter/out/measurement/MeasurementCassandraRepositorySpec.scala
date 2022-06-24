@@ -5,7 +5,7 @@ import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.*
 import com.datastax.oss.driver.api.core.CqlIdentifier
 import com.datastax.oss.driver.api.core.cql.{AsyncResultSet, SimpleStatement}
-import com.dimafeng.testcontainers.ForAllTestContainer
+import com.dimafeng.testcontainers.ForEachTestContainer
 import de.neuland.bandwhichd.server.adapter.out.CassandraMigration
 import de.neuland.bandwhichd.server.boot.{Configuration, ConfigurationFixtures}
 import de.neuland.bandwhichd.server.domain.measurement.{
@@ -17,16 +17,17 @@ import de.neuland.bandwhichd.server.lib.cassandra.CassandraContext
 import de.neuland.bandwhichd.server.lib.test.cassandra.CassandraContainer
 import de.neuland.bandwhichd.server.lib.time.Interval
 import de.neuland.bandwhichd.server.test.CassandraTestMigration
-import org.scalatest.Assertion
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.{AnyWordSpec, AsyncWordSpec}
+import org.scalatest.{Assertion, EitherValues}
 import org.testcontainers.containers.GenericContainer
 
 class MeasurementCassandraRepositorySpec
     extends AsyncWordSpec
     with AsyncIOSpec
     with Matchers
-    with ForAllTestContainer {
+    with EitherValues
+    with ForEachTestContainer {
 
   override val container: CassandraContainer = CassandraContainer()
   private def configuration: Configuration =
@@ -75,6 +76,36 @@ class MeasurementCassandraRepositorySpec
           result2 shouldBe List(a, c)
           result3 shouldBe List(a, b, c)
         }
+      }
+    }
+
+    "reject recording" in {
+      // given
+      val readOnlyConfiguration = configuration.copy(readonly = true)
+      CassandraContext.resource[IO](readOnlyConfiguration).use {
+        cassandraContext =>
+
+          val a = MeasurementFixtures.exampleNetworkConfigurationMeasurement
+
+          val measurementRepository: MeasurementRepository[IO] =
+            MeasurementCassandraRepository[IO](
+              cassandraContext,
+              readOnlyConfiguration
+            )
+
+          for {
+            _ <- CassandraTestMigration(cassandraContext)
+              .migrate(readOnlyConfiguration)
+
+            // when
+            result <- measurementRepository.record(a).attempt
+
+            // then
+            measurements <- measurementRepository.getAll.compile.toList
+          } yield {
+            result.left.value should have message "readonly mode enabled"
+            measurements shouldBe empty
+          }
       }
     }
   }

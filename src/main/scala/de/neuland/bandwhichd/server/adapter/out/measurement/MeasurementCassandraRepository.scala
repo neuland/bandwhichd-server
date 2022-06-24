@@ -22,23 +22,26 @@ class MeasurementCassandraRepository[F[_]: Async](
     private val configuration: Configuration
 ) extends MeasurementRepository[F] {
   override def record(measurement: Measurement[Timing]): F[Unit] =
-    cassandraContext.executeRawExpectNoRow(
-      SimpleStatement
-        .builder("insert into measurements json ? using ttl ?")
-        .addPositionalValues(
-          Encoder[Measurement[Timing]]
-            .apply(measurement)
-            .noSpaces,
-          measurement match
-            case _: Measurement.NetworkConfiguration =>
-              configuration.measurementNetworkConfigurationTTL.toSeconds.toInt
-            case _: Measurement.NetworkUtilization =>
-              configuration.measurementNetworkUtilizationTTL.toSeconds.toInt
-        )
-        .setKeyspace(configuration.measurementsKeyspace)
-        .setTimeout(configuration.recordMeasurementQueryTimeout)
-        .build()
-    )
+    if (configuration.readonly)
+      Async[F].raiseError(new Exception("readonly mode enabled"))
+    else
+      cassandraContext.executeRawExpectNoRow(
+        SimpleStatement
+          .builder("insert into measurements json ? using ttl ?")
+          .addPositionalValues(
+            Encoder[Measurement[Timing]]
+              .apply(measurement)
+              .noSpaces,
+            measurement match
+              case _: Measurement.NetworkConfiguration =>
+                configuration.measurementNetworkConfigurationTTL.toSeconds.toInt
+              case _: Measurement.NetworkUtilization =>
+                configuration.measurementNetworkUtilizationTTL.toSeconds.toInt
+          )
+          .setKeyspace(configuration.measurementsKeyspace)
+          .setTimeout(configuration.recordMeasurementQueryTimeout)
+          .build()
+      )
 
   override def getAll: Stream[F, Measurement[Timing]] =
     cassandraContext

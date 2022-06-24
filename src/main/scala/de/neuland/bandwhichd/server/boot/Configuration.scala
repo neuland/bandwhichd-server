@@ -11,6 +11,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
 
 case class Configuration(
+    readonly: Boolean,
     contactPoints: Seq[SocketAddress[IpAddress]],
     localDatacenter: String,
     measurementsKeyspace: CqlIdentifier,
@@ -23,6 +24,7 @@ case class Configuration(
 
 object Configuration {
   def resolve[F[_]: Sync](
+      readonly: String,
       contactPoints: String,
       localDatacenter: String,
       measurementsKeyspace: String,
@@ -58,6 +60,7 @@ object Configuration {
         _.resolve
       )
     } yield Configuration(
+      readonly = readonly == "true",
       contactPoints = ipAddressContactPoints,
       localDatacenter = localDatacenter,
       measurementsKeyspace = CqlIdentifier.fromCql(measurementsKeyspace),
@@ -76,6 +79,7 @@ object Configuration {
 
   def resolveEnv[F[_]: Sync]: F[Configuration] =
     resolve(
+      scala.util.Properties.envOrElse("READONLY", ""),
       scala.util.Properties.envOrElse("CONTACT_POINTS", "localhost:9042"),
       scala.util.Properties.envOrElse("LOCAL_DATACENTER", "datacenter1"),
       scala.util.Properties.envOrElse("MEASUREMENTS_KEYSPACE", "bandwhichd"),
