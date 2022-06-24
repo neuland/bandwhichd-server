@@ -2,11 +2,16 @@ lazy val root = (project in file("."))
   .settings(
     organization := "de.neuland-bfi",
     name := "bandwhichd-server",
-    version := "0.5.1",
+    version := "0.6.0-rc1",
     scalaVersion := "3.1.2",
     Compile / scalaSource := baseDirectory.value / "src" / "main" / "scala",
     Test / scalaSource := baseDirectory.value / "src" / "test" / "scala",
     Test / fork := true,
+    run / fork := true,
+    run / connectInput := true,
+    javaOptions := Seq(
+      "-Dorg.slf4j.simpleLogger.log.de.neuland.bandwhichd=debug"
+    ),
     ThisBuild / assemblyMergeStrategy := {
       case PathList(ps @ _*) if ps.last endsWith "module-info.class" =>
         MergeStrategy.discard
@@ -25,6 +30,7 @@ lazy val root = (project in file("."))
     libraryDependencies += "io.circe" %% "circe-core" % "0.14.2",
     libraryDependencies += "io.circe" %% "circe-parser" % "0.14.2",
     libraryDependencies += "org.typelevel" %% "cats-effect" % "3.3.12",
+    libraryDependencies += "org.typelevel" %% "log4cats-slf4j" % "2.3.2",
     libraryDependencies += "org.http4s" %% "http4s-circe" % "1.0.0-M32",
     libraryDependencies += "org.http4s" %% "http4s-core" % "1.0.0-M32",
     libraryDependencies += "org.http4s" %% "http4s-dsl" % "1.0.0-M32",

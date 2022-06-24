@@ -26,7 +26,11 @@ import org.http4s.dsl.io.*
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.{Router, Server}
 import org.http4s.{HttpApp, HttpRoutes}
+import org.typelevel.log4cats.slf4j.Slf4jLogger
+import org.typelevel.log4cats.{Logger, SelfAwareStructuredLogger}
 
+import java.io.{BufferedReader, InputStreamReader}
+import java.util.Scanner
 import scala.io.StdIn
 
 class App[F[_]: Async](
@@ -56,6 +60,19 @@ class App[F[_]: Async](
       statsRepository = statsRepository
     )
 
+  // in scheduling
+  val aggregationScheduler: Scheduler[F] =
+    AggregationScheduler[F](
+      configuration = configuration,
+      statsApplicationService = statsApplicationService
+    )
+
+  // scheduling
+  val schedulersOperator: SchedulersOperator[F] =
+    SchedulersOperator[F](
+      aggregationScheduler
+    )
+
   // in http
   val healthController: HealthController[F] =
     HealthController[F]()
@@ -65,12 +82,6 @@ class App[F[_]: Async](
     )
   val statsController: StatsController[F] =
     StatsController[F](
-      statsApplicationService = statsApplicationService
-    )
-
-  // in scheduling
-  val aggregationScheduler: Scheduler[F] =
-    AggregationScheduler[F](
       statsApplicationService = statsApplicationService
     )
 
@@ -84,17 +95,11 @@ class App[F[_]: Async](
   // org.http4s.syntax.KleisliResponseOps#orNotFound
   val httpApp: HttpApp[F] =
     routes.routes.orNotFound
-
-  // scheduling
-  val schedulersOperator: Operator[F] =
-    SchedulersOperator[F](
-      aggregationScheduler
-    )
 }
 
 object App extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
-    val schedulerOutcomeR = for {
+    val outcomeR = for {
       configuration <- Configuration.resource[IO]
       cassandraContext <- CassandraContext.resource[IO](configuration)
       _ <- Resource.eval(
@@ -102,24 +107,34 @@ object App extends IOApp {
       )
       main = App[IO](cassandraContext, configuration)
       schedulerOutcomeF <- main.schedulersOperator.resource
-      _ <- EmberServerBuilder
+      server <- EmberServerBuilder
         .default[IO]
         .withHostOption(None)
         .withHttpApp(main.httpApp)
         .build
-    } yield schedulerOutcomeF
+      logger <- Resource.eval(Slf4jLogger.create[IO])
+      _ <- Resource.eval(
+        logger.info(
+          s"bandwhichd-server startup complete - ${main.schedulersOperator.size} scheduler - listening on ${server.address}"
+        )
+      )
+      lineF <- Resource.eval(IO.delay {
+        for {
+          line <- IO.interruptible {
+            StdIn.readLine()
+          }
+          _ <- if (line == null) IO.never else IO.unit
+        } yield ()
+      })
+    } yield schedulerOutcomeF.race(lineF)
 
-    for {
-      schedulerOutcome <- schedulerOutcomeR.use(identity)
-    } yield {
-      schedulerOutcome match
-        case Outcome.Succeeded(_) =>
-          ExitCode.Success
-        case Outcome.Errored(throwable) =>
-          throwable.printStackTrace()
-          ExitCode.Error
-        case Outcome.Canceled() =>
-          ExitCode.Error
+    outcomeR.use { outcomeF =>
+      for {
+        outcome <- outcomeF
+      } yield outcome match
+        case Right(_)                   => ExitCode.Success
+        case Left(Outcome.Succeeded(_)) => ExitCode.Success
+        case _                          => ExitCode.Error
     }
   }
 }

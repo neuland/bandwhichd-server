@@ -9,7 +9,12 @@ import de.neuland.bandwhichd.server.adapter.in.v1.message.{
   ApiV1MessageV1Fixtures,
   MessageController
 }
-import de.neuland.bandwhichd.server.boot.{App, Configuration, Routes}
+import de.neuland.bandwhichd.server.boot.{
+  App,
+  Configuration,
+  ConfigurationFixtures,
+  Routes
+}
 import de.neuland.bandwhichd.server.domain.measurement.MeasurementFixtures
 import de.neuland.bandwhichd.server.lib.cassandra.CassandraContext
 import de.neuland.bandwhichd.server.lib.test.cassandra.CassandraContainer
@@ -31,11 +36,7 @@ class BandwhichDServerApiV1Spec
 
   override val container: CassandraContainer = CassandraContainer()
   private def configuration: Configuration =
-    Configuration(
-      contactPoints = Seq(container.container.socket),
-      localDatacenter = container.datacenter,
-      measurementsKeyspace = CqlIdentifier.fromCql("bandwhichd")
-    )
+    ConfigurationFixtures.testDefaults(container)
 
   "bandwhichd-server v1 API" should {
     "have health status" in {

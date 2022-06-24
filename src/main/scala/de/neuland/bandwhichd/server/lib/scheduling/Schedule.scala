@@ -8,6 +8,7 @@ sealed trait Schedule[F[_]] {
 
 object Schedule {
   case class Pausing[F[_]](
+      name: String,
       pauseDuration: FiniteDuration,
       work: Work[F]
   ) extends Schedule[F]

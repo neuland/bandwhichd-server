@@ -6,19 +6,31 @@ import cats.{Defer, Monad, MonadError, Traverse}
 import com.comcast.ip4s.{Dns, Host, IpAddress, SocketAddress}
 import com.datastax.oss.driver.api.core.CqlIdentifier
 
+import java.time.Duration
+import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
 
 case class Configuration(
     contactPoints: Seq[SocketAddress[IpAddress]],
     localDatacenter: String,
-    measurementsKeyspace: CqlIdentifier
+    measurementsKeyspace: CqlIdentifier,
+    measurementNetworkConfigurationTTL: Duration,
+    measurementNetworkUtilizationTTL: Duration,
+    recordMeasurementQueryTimeout: Duration,
+    getAllMeasurementsQueryTimeout: Duration,
+    aggregationSchedulerInterval: Duration
 )
 
 object Configuration {
   def resolve[F[_]: Sync](
       contactPoints: String,
       localDatacenter: String,
-      measurementsKeyspace: String
+      measurementsKeyspace: String,
+      measurementNetworkConfigurationTTL: String,
+      measurementNetworkUtilizationTTL: String,
+      recordMeasurementQueryTimeout: String,
+      getAllMeasurementsQueryTimeout: String,
+      aggregationSchedulerInterval: String
   ): F[Configuration] = {
 
     val maybeHostnameContactPoints = contactPoints
@@ -48,7 +60,17 @@ object Configuration {
     } yield Configuration(
       contactPoints = ipAddressContactPoints,
       localDatacenter = localDatacenter,
-      measurementsKeyspace = CqlIdentifier.fromCql(measurementsKeyspace)
+      measurementsKeyspace = CqlIdentifier.fromCql(measurementsKeyspace),
+      measurementNetworkConfigurationTTL =
+        Duration.parse(measurementNetworkConfigurationTTL),
+      measurementNetworkUtilizationTTL =
+        Duration.parse(measurementNetworkUtilizationTTL),
+      recordMeasurementQueryTimeout =
+        Duration.parse(recordMeasurementQueryTimeout),
+      getAllMeasurementsQueryTimeout =
+        Duration.parse(getAllMeasurementsQueryTimeout),
+      aggregationSchedulerInterval =
+        Duration.parse(aggregationSchedulerInterval)
     )
   }
 
@@ -56,7 +78,16 @@ object Configuration {
     resolve(
       scala.util.Properties.envOrElse("CONTACT_POINTS", "localhost:9042"),
       scala.util.Properties.envOrElse("LOCAL_DATACENTER", "datacenter1"),
-      scala.util.Properties.envOrElse("MEASUREMENTS_KEYSPACE", "bandwhichd")
+      scala.util.Properties.envOrElse("MEASUREMENTS_KEYSPACE", "bandwhichd"),
+      scala.util.Properties
+        .envOrElse("MEASUREMENT_NETWORK_CONFIGURATION_TTL", "PT2H"),
+      scala.util.Properties
+        .envOrElse("MEASUREMENT_NETWORK_UTILIZATION_TTL", "PT2H"),
+      scala.util.Properties
+        .envOrElse("RECORD_MEASUREMENT_QUERY_TIMEOUT", "PT2S"),
+      scala.util.Properties
+        .envOrElse("GET_ALL_MEASUREMENTS_QUERY_TIMEOUT", "PT8S"),
+      scala.util.Properties.envOrElse("AGGREGATION_SCHEDULER_INTERVAL", "PT10S")
     )
 
   def resource[F[_]: Sync]: Resource[F, Configuration] =

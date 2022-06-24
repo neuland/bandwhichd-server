@@ -7,7 +7,7 @@ import com.datastax.oss.driver.api.core.CqlIdentifier
 import com.datastax.oss.driver.api.core.cql.{AsyncResultSet, SimpleStatement}
 import com.dimafeng.testcontainers.ForAllTestContainer
 import de.neuland.bandwhichd.server.adapter.out.CassandraMigration
-import de.neuland.bandwhichd.server.boot.Configuration
+import de.neuland.bandwhichd.server.boot.{Configuration, ConfigurationFixtures}
 import de.neuland.bandwhichd.server.domain.measurement.{
   MeasurementFixtures,
   MeasurementRepository,
@@ -30,11 +30,7 @@ class MeasurementCassandraRepositorySpec
 
   override val container: CassandraContainer = CassandraContainer()
   private def configuration: Configuration =
-    Configuration(
-      contactPoints = Seq(container.container.socket),
-      localDatacenter = container.datacenter,
-      measurementsKeyspace = CqlIdentifier.fromCql("bandwhichd")
-    )
+    ConfigurationFixtures.testDefaults(container)
 
   "MeasurementCassandraRepository" should {
     "record and get measurements" in {

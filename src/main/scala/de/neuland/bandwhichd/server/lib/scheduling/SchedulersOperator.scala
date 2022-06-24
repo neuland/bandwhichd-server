@@ -5,6 +5,8 @@ import cats.implicits.*
 
 class SchedulersOperator[F[_]: Async](private val schedulers: Scheduler[F]*)
     extends Operator[F] {
+  def size: Int = schedulers.size
+
   override def resource: Resource[F, F[Outcome[F, Throwable, Unit]]] =
     schedulers
       .map(scheduler => SchedulerOperator(scheduler))
@@ -37,5 +39,4 @@ class SchedulersOperator[F[_]: Async](private val schedulers: Scheduler[F]*)
           }
         }
       }
-
 }
