@@ -18,6 +18,10 @@ import de.neuland.bandwhichd.server.boot.{
 import de.neuland.bandwhichd.server.domain.measurement.MeasurementFixtures
 import de.neuland.bandwhichd.server.lib.cassandra.CassandraContext
 import de.neuland.bandwhichd.server.lib.test.cassandra.CassandraContainer
+import de.neuland.bandwhichd.server.lib.time.cats.TimeContextMocks.{
+  unimplementedTimeContext,
+  fixedTimeContext
+}
 import de.neuland.bandwhichd.server.test.CassandraTestMigration
 import io.circe.Json
 import io.circe.Json.{arr, fromString, obj}
@@ -56,7 +60,11 @@ class BandwhichDServerApiV1Spec
             )
           )
 
-          val httpApp = App[IO](cassandraContext, configuration).httpApp
+          val httpApp = App[IO](
+            unimplementedTimeContext,
+            cassandraContext,
+            configuration
+          ).httpApp
 
           for {
             _ <- CassandraTestMigration(cassandraContext).migrate(configuration)
@@ -121,7 +129,11 @@ class BandwhichDServerApiV1Spec
           )
         )
 
-        val httpApp = App[IO](cassandraContext, configuration).httpApp
+        val httpApp = App[IO](
+          unimplementedTimeContext,
+          cassandraContext,
+          configuration
+        ).httpApp
 
         for {
           _ <- CassandraTestMigration(cassandraContext).migrate(configuration)
@@ -150,7 +162,11 @@ class BandwhichDServerApiV1Spec
             )
           )
 
-          val app = App[IO](cassandraContext, readOnlyConfiguration)
+          val app = App[IO](
+            unimplementedTimeContext,
+            cassandraContext,
+            readOnlyConfiguration
+          )
           val httpApp = app.httpApp
 
           for {
@@ -161,7 +177,10 @@ class BandwhichDServerApiV1Spec
             result <- httpApp.run(request)
 
             // then
-            measurements <- app.measurementRepository.getAll.compile.toList
+            measurements <- app.measurementRepository
+              .get(MeasurementFixtures.fullTimeframe)
+              .compile
+              .toList
           } yield {
             result.status shouldBe MethodNotAllowed
             measurements shouldBe empty
@@ -184,7 +203,11 @@ class BandwhichDServerApiV1Spec
           )
         )
 
-        val app = App[IO](cassandraContext, configuration)
+        val app = App[IO](
+          fixedTimeContext(MeasurementFixtures.fullTimeframe.end.instant),
+          cassandraContext,
+          configuration
+        )
         val httpApp = app.httpApp
 
         for {
@@ -240,7 +263,11 @@ class BandwhichDServerApiV1Spec
           )
         )
 
-        val app = App[IO](cassandraContext, configuration)
+        val app = App[IO](
+          fixedTimeContext(MeasurementFixtures.fullTimeframe.end.instant),
+          cassandraContext,
+          configuration
+        )
         val httpApp = app.httpApp
 
         for {

@@ -1,26 +1,27 @@
 package de.neuland.bandwhichd.server.adapter.out.measurement
 
-import com.comcast.ip4s.{Cidr, Host, Hostname, IpAddress, SocketAddress}
+import com.comcast.ip4s.*
 import com.datastax.oss.driver.api.core.CqlIdentifier
 import com.fasterxml.jackson.databind.jsontype.impl.ClassNameIdResolver
-import de.neuland.bandwhichd.server.domain.measurement.*
 import de.neuland.bandwhichd.server.domain.*
+import de.neuland.bandwhichd.server.domain.measurement.*
 import de.neuland.bandwhichd.server.lib.time.Interval
 import io.circe.*
 
 import java.time.ZoneOffset.UTC
-import java.time.{Instant, OffsetDateTime, ZoneOffset, ZonedDateTime}
-import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
 import java.time.format.DateTimeFormatter.ISO_DATE_TIME
+import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
+import java.time.*
 import java.util.UUID
 import scala.util.Try
 
 object MeasurementCassandraCodecs {
   given Codec[Measurement[Timing]] =
-    Codec.forProduct9(
-      "agent_id",
+    Codec.forProduct10(
+      "date",
       "timestamp",
       "end_timestamp",
+      "agent_id",
       "measurement_type",
       "network_configuration_machine_id",
       "network_configuration_hostname",
@@ -29,9 +30,10 @@ object MeasurementCassandraCodecs {
       "network_utilization_connections"
     )(
       (
-          agentId: AgentId,
+          _: String,
           timestamp: Timing.Timestamp,
           endTimestamp: Timing.Timestamp,
+          agentId: AgentId,
           measurementType: String,
           machinedId: MachineId,
           hostname: Hostname,
@@ -75,9 +77,10 @@ object MeasurementCassandraCodecs {
             openSockets
           ) =>
         (
-          agentId,
+          LocalDate.ofInstant(timing.value, UTC).toString,
           timing,
           Timing.Timestamp(Instant.EPOCH),
+          agentId,
           "network_configuration",
           machineId,
           hostname,
@@ -91,9 +94,10 @@ object MeasurementCassandraCodecs {
             connections
           ) =>
         (
-          agentId,
+          LocalDate.ofInstant(timing.value.normalizedStart, UTC).toString,
           Timing.Timestamp(timing.value.normalizedStart),
           Timing.Timestamp(timing.value.normalizedStop),
+          agentId,
           "network_utilization",
           MachineId(new UUID(0, 0)),
           Hostname.fromString("a").get,

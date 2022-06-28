@@ -14,7 +14,7 @@ import de.neuland.bandwhichd.server.lib.time.Interval
 import fs2.Stream
 import io.circe.Encoder
 
-import java.time.ZoneOffset
+import java.time.{LocalDate, ZoneOffset}
 import java.time.ZoneOffset.UTC
 
 class MeasurementCassandraRepository[F[_]: Async](
@@ -27,7 +27,7 @@ class MeasurementCassandraRepository[F[_]: Async](
     else
       cassandraContext.executeRawExpectNoRow(
         SimpleStatement
-          .builder("insert into measurements json ? using ttl ?")
+          .builder("insert into measurements_by_date json ? using ttl ?")
           .addPositionalValues(
             Encoder[Measurement[Timing]]
               .apply(measurement)
@@ -43,14 +43,27 @@ class MeasurementCassandraRepository[F[_]: Async](
           .build()
       )
 
-  override def getAll: Stream[F, Measurement[Timing]] =
-    cassandraContext
-      .executeRaw(
-        SimpleStatement
-          .builder("select json * from measurements")
-          .setKeyspace(configuration.measurementsKeyspace)
-          .setTimeout(configuration.getAllMeasurementsQueryTimeout)
-          .build()
+  override def get(
+      timeframe: Timing.Timeframe
+  ): Stream[F, Measurement[Timing]] =
+    Stream
+      .fromIterator(timeframe.interval.days, 1)
+      .flatMap(day =>
+        cassandraContext
+          .executeRaw(
+            SimpleStatement
+              .builder(
+                "select json * from measurements_by_date where date = ? and timestamp >= ? and timestamp <= ? order by timestamp asc"
+              )
+              .addPositionalValues(
+                day,
+                timeframe.start.instant,
+                timeframe.end.instant
+              )
+              .setKeyspace(configuration.measurementsKeyspace)
+              .setTimeout(configuration.getAllMeasurementsQueryTimeout)
+              .build()
+          )
       )
       .flatMap(reactiveRow =>
         Option(reactiveRow.getString(0)).fold(
@@ -78,7 +91,10 @@ class MeasurementCassandraRepository[F[_]: Async](
           .fold(
             decodingFailure =>
               Stream.raiseError(
-                new Exception(s"could not decode json $json", decodingFailure)
+                new Exception(
+                  s"could not decode json $json",
+                  decodingFailure
+                )
               ),
             Stream.emit
           )

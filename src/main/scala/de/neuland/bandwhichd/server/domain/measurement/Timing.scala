@@ -1,5 +1,6 @@
 package de.neuland.bandwhichd.server.domain.measurement
 
+import cats.data.NonEmptySeq
 import de.neuland.bandwhichd.server.lib.time.Interval
 
 import java.time.ZoneOffset.UTC
@@ -18,6 +19,9 @@ object Timing {
 
     def apply(value: ZonedDateTime): Timestamp =
       apply(value.toInstant)
+
+    given Ordering[Timestamp] =
+      (x, y) => x.instant.compareTo(y.instant)
   }
 
   case class Timeframe private (value: Interval) extends Timing {
@@ -30,6 +34,9 @@ object Timing {
 
     def end: Timestamp =
       Timestamp(value = value.normalizedStop)
+
+    def interval: Interval =
+      value.normalized
   }
 
   object Timeframe {
@@ -43,5 +50,13 @@ object Timing {
 
     def apply(start: Timestamp, duration: Duration): Timeframe =
       apply(value = Interval(start.instant, duration))
+
+    def encompassing(timestamps: NonEmptySeq[Timestamp]): Timeframe =
+      Timeframe(
+        Interval(
+          timestamps.iterator.min.value,
+          timestamps.iterator.max.value
+        )
+      )
   }
 }

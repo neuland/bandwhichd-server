@@ -1,5 +1,6 @@
 package de.neuland.bandwhichd.server.adapter.out.measurement
 
+import cats.data.NonEmptySeq
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.*
@@ -49,6 +50,12 @@ class MeasurementCassandraRepositorySpec
               )
             )
           )
+        val timeframe = Timing.Timeframe.encompassing(
+          NonEmptySeq(
+            c.timing.end,
+            MeasurementFixtures.allTimestamps
+          )
+        )
 
         val measurementRepository: MeasurementRepository[IO] =
           MeasurementCassandraRepository[IO](
@@ -61,13 +68,13 @@ class MeasurementCassandraRepositorySpec
             .migrate(configuration)
 
           // when
-          result0 <- measurementRepository.getAll.compile.toList
+          result0 <- measurementRepository.get(timeframe).compile.toList
           _ <- measurementRepository.record(a)
-          result1 <- measurementRepository.getAll.compile.toList
+          result1 <- measurementRepository.get(timeframe).compile.toList
           _ <- measurementRepository.record(c)
-          result2 <- measurementRepository.getAll.compile.toList
+          result2 <- measurementRepository.get(timeframe).compile.toList
           _ <- measurementRepository.record(b)
-          result3 <- measurementRepository.getAll.compile.toList
+          result3 <- measurementRepository.get(timeframe).compile.toList
 
         } yield {
           // then
@@ -101,7 +108,10 @@ class MeasurementCassandraRepositorySpec
             result <- measurementRepository.record(a).attempt
 
             // then
-            measurements <- measurementRepository.getAll.compile.toList
+            measurements <- measurementRepository
+              .get(MeasurementFixtures.fullTimeframe)
+              .compile
+              .toList
           } yield {
             result.left.value should have message "readonly mode enabled"
             measurements shouldBe empty

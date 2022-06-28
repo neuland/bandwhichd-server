@@ -1,12 +1,22 @@
 package de.neuland.bandwhichd.server.lib.time
 
+import java.time.ZoneOffset.UTC
 import java.time.format.{DateTimeFormatter, DateTimeParseException}
-import java.time.{Duration, Instant, ZonedDateTime}
+import java.time.*
 import java.util.Objects
 import java.util.regex.{Matcher, Pattern}
 import scala.util.{Failure, Success, Try}
 
 case class Interval(start: Instant, duration: Duration) {
+  def days: Iterator[LocalDate] = {
+    val first = LocalDate.ofInstant(normalizedStart, UTC)
+    val last = LocalDate.ofInstant(normalizedStop, UTC)
+    Iterator.unfold[LocalDate, LocalDate](first)(current =>
+      if (current.isAfter(last)) None
+      else Some(current -> current.plusDays(1))
+    )
+  }
+
   def normalizedStart: Instant =
     if (duration.isNegative)
       start.plus(duration)

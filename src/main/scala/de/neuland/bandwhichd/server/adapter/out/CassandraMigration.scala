@@ -24,17 +24,18 @@ class CassandraMigration[F[_]: Async](
     cassandraContext.executeRawExpectNoRow(
       SimpleStatement
         .builder(
-          """create table if not exists measurements (
-          |  agent_id uuid,
+          """create table if not exists measurements_by_date (
+          |  date date,
           |  timestamp timestamp,
           |  end_timestamp timestamp,
+          |  agent_id uuid,
           |  measurement_type ascii,
           |  network_configuration_machine_id uuid,
           |  network_configuration_hostname text,
           |  network_configuration_interfaces frozen<list<frozen<measurement_network_configuration_interface>>>,
           |  network_configuration_open_sockets frozen<list<frozen<measurement_network_configuration_open_socket>>>,
           |  network_utilization_connections frozen<list<frozen<measurement_network_utilization_connection>>>,
-          |  primary key ((agent_id), timestamp, measurement_type),
+          |  primary key ((date), timestamp, agent_id, measurement_type),
           |) with clustering order by (timestamp asc)""".stripMargin
         )
         .setKeyspace(configuration.measurementsKeyspace)

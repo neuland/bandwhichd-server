@@ -22,6 +22,7 @@ import de.neuland.bandwhichd.server.lib.scheduling.{
   Scheduler,
   SchedulersOperator
 }
+import de.neuland.bandwhichd.server.lib.time.cats.TimeContext
 import org.http4s.dsl.io.*
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.{Router, Server}
@@ -34,6 +35,7 @@ import java.util.Scanner
 import scala.io.StdIn
 
 class App[F[_]: Async](
+    private val timeContext: TimeContext[F],
     private val cassandraContext: CassandraContext[F],
     private val configuration: Configuration
 ) {
@@ -56,6 +58,7 @@ class App[F[_]: Async](
 
   val statsApplicationService: StatsApplicationService[F] =
     StatsApplicationService[F](
+      timeContext = timeContext,
       measurementRepository = measurementRepository,
       statsRepository = statsRepository
     )
@@ -106,7 +109,11 @@ object App extends IOApp {
       _ <- Resource.eval(
         CassandraMigration(cassandraContext).migrate(configuration)
       )
-      main = App[IO](cassandraContext, configuration)
+      main = App[IO](
+        TimeContext.systemTimeContext,
+        cassandraContext,
+        configuration
+      )
       schedulerOutcomeF <- main.schedulersOperator.resource
       server <- EmberServerBuilder
         .default[IO]

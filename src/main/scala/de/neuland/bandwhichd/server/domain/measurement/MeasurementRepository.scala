@@ -5,5 +5,5 @@ import fs2.Stream
 trait MeasurementRepository[F[_]] {
   def record(measurement: Measurement[Timing]): F[Unit]
 
-  def getAll: Stream[F, Measurement[Timing]]
+  def get(timeframe: Timing.Timeframe): Stream[F, Measurement[Timing]]
 }

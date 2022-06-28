@@ -1,5 +1,6 @@
 package de.neuland.bandwhichd.server.domain.measurement
 
+import cats.data.NonEmptySeq
 import com.comcast.ip4s.*
 import de.neuland.bandwhichd.server.domain.*
 import de.neuland.bandwhichd.server.lib.time.Interval
@@ -191,4 +192,13 @@ object MeasurementFixtures {
         )
       )
     )
+
+  val allTimestamps: Seq[Timing.Timestamp] =
+    Seq(
+      exampleNetworkConfigurationMeasurement.timing,
+      exampleNetworkUtilizationMeasurement.timing.start,
+      exampleNetworkUtilizationMeasurement.timing.end
+    )
+  val fullTimeframe: Timing.Timeframe =
+    Timing.Timeframe.encompassing(NonEmptySeq.fromSeqUnsafe(allTimestamps))
 }

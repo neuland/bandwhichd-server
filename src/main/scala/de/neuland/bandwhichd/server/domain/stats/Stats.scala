@@ -3,13 +3,16 @@ package de.neuland.bandwhichd.server.domain.stats
 import cats.Monad
 import cats.effect.kernel.Concurrent
 import cats.implicits.*
-import com.comcast.ip4s.{Cidr, Host, Hostname, IDN, IpAddress}
+import com.comcast.ip4s.*
 import de.neuland.bandwhichd.server.domain.measurement.{Measurement, Timing}
 import de.neuland.bandwhichd.server.domain.{AgentId, Interface, InterfaceName}
+import de.neuland.bandwhichd.server.lib.time.Interval
+import de.neuland.bandwhichd.server.lib.time.cats.TimeContext
 import fs2.Stream
 
-import java.nio.charset.StandardCharsets
 import java.nio.charset.StandardCharsets.UTF_8
+import java.time.Instant
+import java.time.temporal.ChronoUnit.HOURS
 import java.util.UUID
 
 case class Stats(
@@ -40,6 +43,13 @@ case class Stats(
 }
 
 object Stats {
+  def defaultTimeframe[F[_]: Monad](
+      instantContext: TimeContext[F]
+  ): F[Timing.Timeframe] =
+    for {
+      now <- instantContext.now
+    } yield Timing.Timeframe(Interval(now.minus(2, HOURS), now))
+
   def apply[F[_]: Concurrent](
       measurements: Stream[F, Measurement[Timing]]
   ): F[Stats] =
