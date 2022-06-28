@@ -11,6 +11,7 @@ object ConfigurationFixtures {
       readonly = false,
       contactPoints = Seq(container.container.socket),
       localDatacenter = container.datacenter,
+      migrationQueryTimeout = Duration.ofSeconds(10),
       measurementsKeyspace = CqlIdentifier.fromCql("bandwhichd"),
       measurementNetworkConfigurationTTL = Duration.ofHours(2),
       measurementNetworkUtilizationTTL = Duration.ofHours(2),

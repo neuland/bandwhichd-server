@@ -18,19 +18,22 @@ class CassandraTestMigration[F[_]: Async](
       configuration: Configuration
   ): F[Unit] =
     for {
-      _ <- createTestKeyspaceIfNotExists(configuration.measurementsKeyspace)
+      _ <- createTestKeyspaceIfNotExists(configuration)
       _ <- cassandraMigration.migrate(configuration)
     } yield ()
 
   private def createTestKeyspaceIfNotExists(
-      keyspace: CqlIdentifier
-  ): F[Unit] =
+      configuration: Configuration
+  ): F[Unit] = {
+    val measurementsKeyspace = configuration.measurementsKeyspace.asCql(false)
     cassandraContext.executeRawExpectNoRow(
       SimpleStatement
         .builder(
-          s"""create keyspace if not exists ${keyspace.asCql(false)}
+          s"""create keyspace if not exists $measurementsKeyspace
            |with replication = {'class': 'SimpleStrategy', 'replication_factor': 1}""".stripMargin
         )
+        .setTimeout(configuration.migrationQueryTimeout)
         .build()
     )
+  }
 }

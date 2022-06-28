@@ -14,6 +14,7 @@ case class Configuration(
     readonly: Boolean,
     contactPoints: Seq[SocketAddress[IpAddress]],
     localDatacenter: String,
+    migrationQueryTimeout: Duration,
     measurementsKeyspace: CqlIdentifier,
     measurementNetworkConfigurationTTL: Duration,
     measurementNetworkUtilizationTTL: Duration,
@@ -27,6 +28,7 @@ object Configuration {
       readonly: String,
       contactPoints: String,
       localDatacenter: String,
+      migrationQueryTimeout: String,
       measurementsKeyspace: String,
       measurementNetworkConfigurationTTL: String,
       measurementNetworkUtilizationTTL: String,
@@ -63,6 +65,7 @@ object Configuration {
       readonly = readonly == "true",
       contactPoints = ipAddressContactPoints,
       localDatacenter = localDatacenter,
+      migrationQueryTimeout = Duration.parse(migrationQueryTimeout),
       measurementsKeyspace = CqlIdentifier.fromCql(measurementsKeyspace),
       measurementNetworkConfigurationTTL =
         Duration.parse(measurementNetworkConfigurationTTL),
@@ -82,6 +85,7 @@ object Configuration {
       scala.util.Properties.envOrElse("READONLY", ""),
       scala.util.Properties.envOrElse("CONTACT_POINTS", "localhost:9042"),
       scala.util.Properties.envOrElse("LOCAL_DATACENTER", "datacenter1"),
+      scala.util.Properties.envOrElse("MIGRATION_QUERY_TIMEOUT", "PT10S"),
       scala.util.Properties.envOrElse("MEASUREMENTS_KEYSPACE", "bandwhichd"),
       scala.util.Properties
         .envOrElse("MEASUREMENT_NETWORK_CONFIGURATION_TTL", "PT2H"),

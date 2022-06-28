@@ -38,6 +38,7 @@ class CassandraMigration[F[_]: Async](
           |) with clustering order by (timestamp asc)""".stripMargin
         )
         .setKeyspace(configuration.measurementsKeyspace)
+        .setTimeout(configuration.migrationQueryTimeout)
         .build()
     )
 
@@ -54,6 +55,7 @@ class CassandraMigration[F[_]: Async](
             |)""".stripMargin
         )
         .setKeyspace(configuration.measurementsKeyspace)
+        .setTimeout(configuration.migrationQueryTimeout)
         .build()
     )
 
@@ -70,6 +72,7 @@ class CassandraMigration[F[_]: Async](
             |)""".stripMargin
         )
         .setKeyspace(configuration.measurementsKeyspace)
+        .setTimeout(configuration.migrationQueryTimeout)
         .build()
     )
 
@@ -89,6 +92,7 @@ class CassandraMigration[F[_]: Async](
             |)""".stripMargin
         )
         .setKeyspace(configuration.measurementsKeyspace)
+        .setTimeout(configuration.migrationQueryTimeout)
         .build()
     )
 
@@ -104,6 +108,7 @@ class CassandraMigration[F[_]: Async](
             |)""".stripMargin
         )
         .setKeyspace(configuration.measurementsKeyspace)
+        .setTimeout(configuration.migrationQueryTimeout)
         .build()
     )
 }
