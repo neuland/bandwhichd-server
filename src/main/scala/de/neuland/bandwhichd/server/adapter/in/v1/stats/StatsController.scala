@@ -27,10 +27,13 @@ class StatsController[F[_]: Async](
       response <- {
         if (useDotInsteadOfJson(request.headers)) {
           import de.neuland.bandwhichd.server.lib.http4s.dot.DotHttp4s.dotEntityEncoder
-          Ok(Stats.dotEncoder(stats))
+          Ok(Stats.dotEncoder(stats.withoutHostsOutsideOfMonitoredNetworks))
         } else {
           import org.http4s.circe.CirceEntityEncoder.circeEntityEncoder
-          Ok(stats.asJson(Stats.circeEncoder))
+          Ok(
+            stats.withoutHostsOutsideOfMonitoredNetworks
+              .asJson(Stats.circeEncoder)
+          )
         }
       }
     } yield response

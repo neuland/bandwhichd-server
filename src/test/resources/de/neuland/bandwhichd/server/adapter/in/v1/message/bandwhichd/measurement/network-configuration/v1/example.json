@@ -35,6 +35,13 @@
         ]
       },
       {
+        "name": "tun0",
+        "is_up": false,
+        "networks": [
+          "192.168.10.87/24"
+        ]
+      },
+      {
         "name": "wlp3s0",
         "is_up": true,
         "networks": [

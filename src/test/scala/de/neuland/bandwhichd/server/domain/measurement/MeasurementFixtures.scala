@@ -62,6 +62,16 @@ object MeasurementFixtures {
           )
         ),
         Interface(
+          name = InterfaceName("tun0"),
+          isUp = false,
+          networks = Seq(
+            Cidr(
+              address = Ipv4Address.fromBytes(192, 168, 10, 87),
+              prefixBits = 24
+            )
+          )
+        ),
+        Interface(
           name = InterfaceName("wlp3s0"),
           isUp = true,
           networks = Seq(
@@ -160,6 +170,24 @@ object MeasurementFixtures {
           protocol = Protocol.Udp,
           received = Received(BytesCount(BigInt(120))),
           sent = Sent(BytesCount(BigInt(64)))
+        ),
+        Connection(
+          interfaceName = InterfaceName("wlp3s0"),
+          localSocket = Local(
+            SocketAddress(
+              Ipv4Address.fromBytes(172, 18, 195, 209),
+              Port.fromInt(41234).get
+            )
+          ),
+          remoteSocket = Remote(
+            SocketAddress(
+              Ipv4Address.fromBytes(45, 1, 2, 3),
+              Port.fromInt(80).get
+            )
+          ),
+          protocol = Protocol.Tcp,
+          received = Received(BytesCount(BigInt(653808))),
+          sent = Sent(BytesCount(BigInt(1365)))
         )
       )
     )

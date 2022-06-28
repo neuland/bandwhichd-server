@@ -27,6 +27,14 @@
         "protocol": "udp",
         "received": "120",
         "sent": "64"
+      },
+      {
+        "interface_name": "wlp3s0",
+        "local_socket_address": "172.18.195.209:41234",
+        "remote_socket_address": "45.1.2.3:80",
+        "protocol": "tcp",
+        "received": "653808",
+        "sent": "1365"
       }
     ]
   }
