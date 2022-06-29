@@ -11,7 +11,7 @@ import de.neuland.bandwhichd.server.adapter.out.CassandraMigration
 import de.neuland.bandwhichd.server.boot.{Configuration, ConfigurationFixtures}
 import de.neuland.bandwhichd.server.domain.measurement.{
   MeasurementFixtures,
-  MeasurementRepository,
+  MeasurementsRepository,
   Timing
 }
 import de.neuland.bandwhichd.server.lib.cassandra.CassandraContext
@@ -24,7 +24,7 @@ import org.scalatest.wordspec.{AnyWordSpec, AsyncWordSpec}
 import org.scalatest.{Assertion, EitherValues}
 import org.testcontainers.containers.GenericContainer
 
-class MeasurementCassandraRepositorySpec
+class MeasurementsCassandraRepositorySpec
     extends AsyncWordSpec
     with AsyncIOSpec
     with Matchers
@@ -51,15 +51,15 @@ class MeasurementCassandraRepositorySpec
               )
             )
           )
-        val timeframe = Timing.Timeframe.encompassing(
+        val timeframe = Timing.Timeframe(
           NonEmptySeq(
             c.timing.end,
             MeasurementFixtures.allTimestamps
           )
         )
 
-        val measurementRepository: MeasurementRepository[IO] =
-          MeasurementCassandraRepository[IO](
+        val measurementsRepository: MeasurementsRepository[IO] =
+          MeasurementsCassandraRepository[IO](
             cassandraContext,
             configuration
           )
@@ -69,13 +69,13 @@ class MeasurementCassandraRepositorySpec
             .migrate(configuration)
 
           // when
-          result0 <- measurementRepository.get(timeframe).compile.toList
-          _ <- measurementRepository.record(a)
-          result1 <- measurementRepository.get(timeframe).compile.toList
-          _ <- measurementRepository.record(c)
-          result2 <- measurementRepository.get(timeframe).compile.toList
-          _ <- measurementRepository.record(b)
-          result3 <- measurementRepository.get(timeframe).compile.toList
+          result0 <- measurementsRepository.get(timeframe).compile.toList
+          _ <- measurementsRepository.record(a)
+          result1 <- measurementsRepository.get(timeframe).compile.toList
+          _ <- measurementsRepository.record(c)
+          result2 <- measurementsRepository.get(timeframe).compile.toList
+          _ <- measurementsRepository.record(b)
+          result3 <- measurementsRepository.get(timeframe).compile.toList
 
         } yield {
           // then
@@ -95,8 +95,8 @@ class MeasurementCassandraRepositorySpec
 
           val a = MeasurementFixtures.exampleNetworkConfigurationMeasurement
 
-          val measurementRepository: MeasurementRepository[IO] =
-            MeasurementCassandraRepository[IO](
+          val measurementsRepository: MeasurementsRepository[IO] =
+            MeasurementsCassandraRepository[IO](
               cassandraContext,
               readOnlyConfiguration
             )
@@ -106,10 +106,10 @@ class MeasurementCassandraRepositorySpec
               .migrate(readOnlyConfiguration)
 
             // when
-            result <- measurementRepository.record(a).attempt
+            result <- measurementsRepository.record(a).attempt
 
             // then
-            measurements <- measurementRepository
+            measurements <- measurementsRepository
               .get(MeasurementFixtures.fullTimeframe)
               .compile
               .toList

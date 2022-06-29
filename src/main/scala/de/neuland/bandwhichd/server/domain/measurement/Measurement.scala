@@ -6,6 +6,10 @@ import de.neuland.bandwhichd.server.domain.*
 sealed trait Measurement[+T <: Timing] {
   def agentId: AgentId
   def timing: T
+  def timestamp: Timing.Timestamp =
+    timing match
+      case timestamp: Timing.Timestamp => timestamp
+      case timeframe: Timing.Timeframe => timeframe.start
 }
 
 object Measurement {

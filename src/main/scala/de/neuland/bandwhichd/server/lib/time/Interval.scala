@@ -1,8 +1,10 @@
 package de.neuland.bandwhichd.server.lib.time
 
+import _root_.cats.data.NonEmptySeq
+
+import java.time.*
 import java.time.ZoneOffset.UTC
 import java.time.format.{DateTimeFormatter, DateTimeParseException}
-import java.time.*
 import java.util.Objects
 import java.util.regex.{Matcher, Pattern}
 import scala.util.{Failure, Success, Try}
@@ -16,6 +18,9 @@ case class Interval(start: Instant, duration: Duration) {
       else Some(current -> current.plusDays(1))
     )
   }
+
+  def contains(instant: Instant): Boolean =
+    !instant.isBefore(normalizedStart) && !instant.isAfter(normalizedStop)
 
   def normalizedStart: Instant =
     if (duration.isNegative)
@@ -54,6 +59,12 @@ case class Interval(start: Instant, duration: Duration) {
 object Interval {
   def apply(start: Instant, stop: Instant): Interval =
     Interval(start = start, duration = Duration.between(start, stop))
+
+  def apply(instants: NonEmptySeq[Instant]): Interval =
+    Interval(
+      instants.iterator.min,
+      instants.iterator.max
+    )
 
   private val PATTERN = "([^/]+)/([^/]+)".r
 

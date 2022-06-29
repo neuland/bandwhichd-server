@@ -8,13 +8,13 @@ import de.neuland.bandwhichd.server.adapter.in.v1.health.HealthController
 import de.neuland.bandwhichd.server.adapter.in.v1.message.MessageController
 import de.neuland.bandwhichd.server.adapter.in.v1.stats.StatsController
 import de.neuland.bandwhichd.server.adapter.out.CassandraMigration
-import de.neuland.bandwhichd.server.adapter.out.measurement.MeasurementCassandraRepository
+import de.neuland.bandwhichd.server.adapter.out.measurement.MeasurementsCassandraRepository
 import de.neuland.bandwhichd.server.adapter.out.stats.StatsInMemoryRepository
 import de.neuland.bandwhichd.server.application.{
   MeasurementApplicationService,
   StatsApplicationService
 }
-import de.neuland.bandwhichd.server.domain.measurement.MeasurementRepository
+import de.neuland.bandwhichd.server.domain.measurement.MeasurementsRepository
 import de.neuland.bandwhichd.server.domain.stats.StatsRepository
 import de.neuland.bandwhichd.server.lib.cassandra.CassandraContext
 import de.neuland.bandwhichd.server.lib.scheduling.{
@@ -34,71 +34,71 @@ import java.io.{BufferedReader, InputStreamReader}
 import java.util.Scanner
 import scala.io.StdIn
 
-class App[F[_]: Async](
+open class App[F[_]: Async](
     private val timeContext: TimeContext[F],
     private val cassandraContext: CassandraContext[F],
     private val configuration: Configuration
 ) {
   // out
-  val measurementCassandraRepository: MeasurementCassandraRepository[F] =
-    MeasurementCassandraRepository[F](
+  lazy val measurementCassandraRepository: MeasurementsCassandraRepository[F] =
+    MeasurementsCassandraRepository[F](
       cassandraContext = cassandraContext,
       configuration = configuration
     )
-  val measurementRepository: MeasurementRepository[F] =
+  lazy val measurementsRepository: MeasurementsRepository[F] =
     measurementCassandraRepository
-  val statsRepository: StatsRepository[F] =
+  lazy val statsRepository: StatsRepository[F] =
     StatsInMemoryRepository[F]()
 
   // application
-  val measurementApplicationService: MeasurementApplicationService[F] =
+  lazy val measurementApplicationService: MeasurementApplicationService[F] =
     MeasurementApplicationService[F](
-      measurementRepository = measurementRepository
+      measurementsRepository = measurementsRepository
     )
 
-  val statsApplicationService: StatsApplicationService[F] =
+  lazy val statsApplicationService: StatsApplicationService[F] =
     StatsApplicationService[F](
       timeContext = timeContext,
-      measurementRepository = measurementRepository,
+      measurementsRepository = measurementsRepository,
       statsRepository = statsRepository
     )
 
   // in scheduling
-  val aggregationScheduler: Scheduler[F] =
+  lazy val aggregationScheduler: Scheduler[F] =
     AggregationScheduler[F](
       configuration = configuration,
       statsApplicationService = statsApplicationService
     )
 
   // scheduling
-  val schedulersOperator: SchedulersOperator[F] =
+  lazy val schedulersOperator: SchedulersOperator[F] =
     SchedulersOperator[F](
       aggregationScheduler
     )
 
   // in http
-  val healthController: HealthController[F] =
+  lazy val healthController: HealthController[F] =
     HealthController[F]()
-  val messageController: MessageController[F] =
+  lazy val messageController: MessageController[F] =
     MessageController[F](
       configuration = configuration,
       timeContext = timeContext,
       measurementApplicationService = measurementApplicationService
     )
-  val statsController: StatsController[F] =
+  lazy val statsController: StatsController[F] =
     StatsController[F](
       statsApplicationService = statsApplicationService
     )
 
   // http
-  val routes: Routes[F] =
+  lazy val routes: Routes[F] =
     Routes[F](
       healthController = healthController,
       messageController = messageController,
       statsController = statsController
     )
   // org.http4s.syntax.KleisliResponseOps#orNotFound
-  val httpApp: HttpApp[F] =
+  lazy val httpApp: HttpApp[F] =
     routes.routes.orNotFound
 }
 

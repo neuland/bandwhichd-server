@@ -113,7 +113,7 @@ object MeasurementFixtures {
         AgentId(UUID.fromString("d254aebd-e092-4ced-b698-0448a46eaf7d")),
       timing = Timing.Timeframe(
         Interval(
-          start = Instant.parse("2022-05-06T15:14:51.742Z"),
+          start = Instant.parse("2022-05-06T15:14:51.942Z"),
           duration = Duration.parse("PT10.001S")
         )
       ),
@@ -200,5 +200,5 @@ object MeasurementFixtures {
       exampleNetworkUtilizationMeasurement.timing.end
     )
   val fullTimeframe: Timing.Timeframe =
-    Timing.Timeframe.encompassing(NonEmptySeq.fromSeqUnsafe(allTimestamps))
+    Timing.Timeframe(NonEmptySeq.fromSeqUnsafe(allTimestamps))
 }

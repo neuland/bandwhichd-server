@@ -26,6 +26,9 @@ object Timing {
 
   case class Timeframe private (value: Interval) extends Timing {
 
+    def contains(timestamp: Timestamp): Boolean =
+      interval.contains(timestamp.instant)
+
     def start: Timestamp =
       Timestamp(value = value.normalizedStart)
 
@@ -51,12 +54,7 @@ object Timing {
     def apply(start: Timestamp, duration: Duration): Timeframe =
       apply(value = Interval(start.instant, duration))
 
-    def encompassing(timestamps: NonEmptySeq[Timestamp]): Timeframe =
-      Timeframe(
-        Interval(
-          timestamps.iterator.min.value,
-          timestamps.iterator.max.value
-        )
-      )
+    def apply(timestamps: NonEmptySeq[Timestamp]): Timeframe =
+      Timeframe(Interval(timestamps.map(_.value)))
   }
 }

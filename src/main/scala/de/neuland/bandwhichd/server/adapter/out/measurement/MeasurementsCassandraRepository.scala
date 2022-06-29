@@ -17,10 +17,10 @@ import io.circe.Encoder
 import java.time.{LocalDate, ZoneOffset}
 import java.time.ZoneOffset.UTC
 
-class MeasurementCassandraRepository[F[_]: Async](
+class MeasurementsCassandraRepository[F[_]: Async](
     private val cassandraContext: CassandraContext[F],
     private val configuration: Configuration
-) extends MeasurementRepository[F] {
+) extends MeasurementsRepository[F] {
   override def record(measurement: Measurement[Timing]): F[Unit] =
     if (configuration.readonly)
       Async[F].raiseError(new Exception("readonly mode enabled"))

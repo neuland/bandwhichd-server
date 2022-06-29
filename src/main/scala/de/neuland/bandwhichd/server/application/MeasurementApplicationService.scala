@@ -5,19 +5,19 @@ import cats.effect.Sync
 import cats.implicits.*
 import de.neuland.bandwhichd.server.domain.measurement.{
   Measurement,
-  MeasurementRepository,
+  MeasurementsRepository,
   Timing
 }
 import fs2.Stream
 
 class MeasurementApplicationService[F[_]: Sync](
-    private val measurementRepository: MeasurementRepository[F]
+    private val measurementsRepository: MeasurementsRepository[F]
 ) {
   def get(timeframe: Timing.Timeframe): Stream[F, Measurement[Timing]] =
-    measurementRepository.get(timeframe)
+    measurementsRepository.get(timeframe)
 
   def recordMeasurement(
       recordMeasurementCommand: RecordMeasurementCommand
   ): F[Unit] =
-    measurementRepository.record(recordMeasurementCommand.measurement)
+    measurementsRepository.record(recordMeasurementCommand.measurement)
 }

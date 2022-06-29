@@ -56,19 +56,14 @@ class MessageController[F[_]: Concurrent](
       to: OptionalValidatedParam[OffsetDateTime]
   ): F[Response[F]] =
     (from, to) match
-      case (Some(Invalid(_)), Some(Invalid(_))) => getInvalid("from", "to")
-      case (Some(Invalid(_)), _)                => getInvalid("from")
-      case (_, Some(Invalid(_)))                => getInvalid("to")
+      case (Some(Invalid(_)), Some(Invalid(_))) => BadRequest("")
+      case (Some(Invalid(_)), _)                => BadRequest("")
+      case (_, Some(Invalid(_)))                => BadRequest("")
       case (Some(Valid(from)), Some(Valid(to))) =>
         getValid(Some(from), Some(to))
       case (Some(Valid(from)), _) => getValid(Some(from), None)
       case (_, Some(Valid(to)))   => getValid(None, Some(to))
       case _                      => getValid(None, None)
-
-  private def getInvalid(
-      invalidQueryParameters: String*
-  ): F[Response[F]] =
-    BadRequest("")
 
   private def getValid(
       from: Option[OffsetDateTime],
@@ -126,7 +121,7 @@ class MessageController[F[_]: Concurrent](
           Timing.Timeframe(
             Interval(
               to.toInstant.minus(Stats.defaultTimeframeDuration),
-              to.toInstant
+              Stats.defaultTimeframeDuration
             )
           )
         )
