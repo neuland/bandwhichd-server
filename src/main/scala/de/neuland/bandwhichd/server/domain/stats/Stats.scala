@@ -11,7 +11,7 @@ import de.neuland.bandwhichd.server.lib.time.cats.TimeContext
 import fs2.Stream
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.time.Instant
+import java.time.{Duration, Instant}
 import java.time.temporal.ChronoUnit.HOURS
 import java.util.UUID
 
@@ -43,12 +43,14 @@ case class Stats(
 }
 
 object Stats {
+  val defaultTimeframeDuration: Duration = Duration.ofHours(2)
+
   def defaultTimeframe[F[_]: Monad](
-      instantContext: TimeContext[F]
+      timeContext: TimeContext[F]
   ): F[Timing.Timeframe] =
     for {
-      now <- instantContext.now
-    } yield Timing.Timeframe(Interval(now.minus(2, HOURS), now))
+      now <- timeContext.now
+    } yield Timing.Timeframe(Interval(now.minus(defaultTimeframeDuration), now))
 
   def apply[F[_]: Concurrent](
       measurements: Stream[F, Measurement[Timing]]

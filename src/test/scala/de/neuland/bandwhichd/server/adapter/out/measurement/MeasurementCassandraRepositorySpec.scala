@@ -19,6 +19,7 @@ import de.neuland.bandwhichd.server.lib.test.cassandra.CassandraContainer
 import de.neuland.bandwhichd.server.lib.time.Interval
 import de.neuland.bandwhichd.server.test.CassandraTestMigration
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.tagobjects.Slow
 import org.scalatest.wordspec.{AnyWordSpec, AsyncWordSpec}
 import org.scalatest.{Assertion, EitherValues}
 import org.testcontainers.containers.GenericContainer
@@ -35,7 +36,7 @@ class MeasurementCassandraRepositorySpec
     ConfigurationFixtures.testDefaults(container)
 
   "MeasurementCassandraRepository" should {
-    "record and get measurements" in {
+    "record and get measurements" taggedAs Slow in {
       CassandraContext.resource[IO](configuration).use { cassandraContext =>
 
         // given
@@ -86,7 +87,7 @@ class MeasurementCassandraRepositorySpec
       }
     }
 
-    "reject recording" in {
+    "reject recording" taggedAs Slow in {
       // given
       val readOnlyConfiguration = configuration.copy(readonly = true)
       CassandraContext.resource[IO](readOnlyConfiguration).use {

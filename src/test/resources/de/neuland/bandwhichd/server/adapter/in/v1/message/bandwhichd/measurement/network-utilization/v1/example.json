@@ -2,7 +2,7 @@
   "type": "bandwhichd/measurement/network-utilization/v1",
   "content": {
     "agent_id": "d254aebd-e092-4ced-b698-0448a46eaf7d",
-    "timeframe": "2022-05-06T15:14:51.74223728Z/PT10.000148S",
+    "timeframe": "2022-05-06T15:14:51.742Z/PT10.001S",
     "connections": [
       {
         "interface_name": "lo",

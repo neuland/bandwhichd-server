@@ -13,6 +13,13 @@ object ApiV1MessageV1Fixtures {
       )
     )(_.mkString).get
 
+  def exampleNetworkConfigurationMeasurementJsonNoSpaces: String =
+    io.circe.parser
+      .parse(exampleNetworkConfigurationMeasurementJson)
+      .toTry
+      .get
+      .noSpaces
+
   def exampleNetworkUtilizationMeasurementJson: String =
     Using(
       Source.fromURL(
@@ -21,4 +28,11 @@ object ApiV1MessageV1Fixtures {
         )
       )
     )(_.mkString).get
+
+  def exampleNetworkUtilizationMeasurementJsonNoSpaces: String =
+    io.circe.parser
+      .parse(exampleNetworkUtilizationMeasurementJson)
+      .toTry
+      .get
+      .noSpaces
 }

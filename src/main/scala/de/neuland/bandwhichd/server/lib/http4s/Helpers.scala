@@ -8,7 +8,7 @@ import org.http4s.*
 trait Helpers {
   def fromJsonOrBadRequest[A, F[_]: Concurrent](request: Request[F])(
       valid: A => F[Response[F]]
-  )(implicit decoder: Decoder[A]): F[Response[F]] =
+  )(using Decoder[A]): F[Response[F]] =
     fromJson(request)(valid)(_ =>
       Concurrent[F].pure(Response.apply(status = Status.BadRequest))
     )
@@ -17,7 +17,7 @@ trait Helpers {
       valid: A => F[Response[F]]
   )(
       invalid: DecodeFailure => F[Response[F]]
-  )(implicit decoder: Decoder[A]): F[Response[F]] = {
+  )(using Decoder[A]): F[Response[F]] = {
     import org.http4s.circe.CirceEntityDecoder.circeEntityDecoder
     val eventualBody: DecodeResult[F, A] = request.attemptAs[A]
     for {

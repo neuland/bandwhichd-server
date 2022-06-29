@@ -1,6 +1,7 @@
 package de.neuland.bandwhichd.server.adapter.in.v1.message
 
 import de.neuland.bandwhichd.server.domain.measurement.MeasurementFixtures
+import io.circe.{Encoder, Printer}
 import io.circe.parser.decode
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -13,7 +14,7 @@ class MessageSpec extends AnyWordSpec with Matchers {
         ApiV1MessageV1Fixtures.exampleNetworkConfigurationMeasurementJson
 
       // when
-      val result = decode[Message](json)(Message.decoder)
+      val result = decode[Message](json)
 
       // then
       result shouldBe Right(
@@ -28,7 +29,7 @@ class MessageSpec extends AnyWordSpec with Matchers {
       val json = ApiV1MessageV1Fixtures.exampleNetworkUtilizationMeasurementJson
 
       // when
-      val result = decode[Message](json)(Message.decoder)
+      val result = decode[Message](json)
 
       // then
       result shouldBe Right(
@@ -37,5 +38,34 @@ class MessageSpec extends AnyWordSpec with Matchers {
         )
       )
     }
+
+    "be writable if type is bandwhichd/measurement/network-configuration/v1" in {
+      // given
+      val message = Message.MeasurementMessage(
+        measurement = MeasurementFixtures.exampleNetworkConfigurationMeasurement
+      )
+
+      // when
+      val result = print[Message](message)
+
+      // then
+      result shouldBe ApiV1MessageV1Fixtures.exampleNetworkConfigurationMeasurementJsonNoSpaces
+    }
+
+    "be writable if type is bandwhichd/measurement/network-utilization/v1" in {
+      // given
+      val message = Message.MeasurementMessage(
+        measurement = MeasurementFixtures.exampleNetworkUtilizationMeasurement
+      )
+
+      // when
+      val result = print[Message](message)
+
+      // then
+      result shouldBe ApiV1MessageV1Fixtures.exampleNetworkUtilizationMeasurementJsonNoSpaces
+    }
   }
+
+  private def print[A](a: A)(using Encoder[A]): String =
+    Encoder[A].apply(a).noSpaces
 }

@@ -14,7 +14,7 @@ object MeasurementFixtures {
       agentId =
         AgentId(UUID.fromString("d254aebd-e092-4ced-b698-0448a46eaf7d")),
       timing =
-        Timing.Timestamp(ZonedDateTime.parse("2022-05-06T15:14:51.74223728Z")),
+        Timing.Timestamp(ZonedDateTime.parse("2022-05-06T15:14:51.742Z")),
       machineId =
         MachineId(UUID.fromString("c414c2da-714c-4b68-b97e-3f31e18053d2")),
       hostname = Hostname.fromString("some-host.example.com").get,
@@ -113,8 +113,8 @@ object MeasurementFixtures {
         AgentId(UUID.fromString("d254aebd-e092-4ced-b698-0448a46eaf7d")),
       timing = Timing.Timeframe(
         Interval(
-          start = Instant.parse("2022-05-06T15:14:51.74223728Z"),
-          duration = Duration.parse("PT10.000148S")
+          start = Instant.parse("2022-05-06T15:14:51.742Z"),
+          duration = Duration.parse("PT10.001S")
         )
       ),
       connections = Seq(

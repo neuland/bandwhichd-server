@@ -19,8 +19,8 @@ import de.neuland.bandwhichd.server.domain.measurement.MeasurementFixtures
 import de.neuland.bandwhichd.server.lib.cassandra.CassandraContext
 import de.neuland.bandwhichd.server.lib.test.cassandra.CassandraContainer
 import de.neuland.bandwhichd.server.lib.time.cats.TimeContextMocks.{
-  unimplementedTimeContext,
-  fixedTimeContext
+  fixedTimeContext,
+  unimplementedTimeContext
 }
 import de.neuland.bandwhichd.server.test.CassandraTestMigration
 import io.circe.Json
@@ -29,6 +29,7 @@ import org.http4s.*
 import org.http4s.Status.{MethodNotAllowed, Ok}
 import org.http4s.implicits.*
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.tagobjects.Slow
 import org.scalatest.wordspec.AsyncWordSpec
 import org.typelevel.ci.*
 
@@ -43,7 +44,7 @@ class BandwhichDServerApiV1Spec
     ConfigurationFixtures.testDefaults(container)
 
   "bandwhichd-server v1 API" should {
-    "have health status" in {
+    "have health status" taggedAs Slow in {
       CassandraContext
         .resource[IO](configuration)
         .use { cassandraContext =>
@@ -117,13 +118,13 @@ class BandwhichDServerApiV1Spec
         }
     }
 
-    "record message v1" in {
+    "record message v1" taggedAs Slow in {
       CassandraContext.resource[IO](configuration).use { cassandraContext =>
 
         // given
         val request = Request[IO](
           method = Method.POST,
-          uri = uri"/v1/message",
+          uri = uri"/v1/messages",
           entity = EntityEncoder.stringEncoder.toEntity(
             ApiV1MessageV1Fixtures.exampleNetworkConfigurationMeasurementJson
           )
@@ -148,7 +149,7 @@ class BandwhichDServerApiV1Spec
       }
     }
 
-    "reject recording message v1" in {
+    "reject recording message v1" taggedAs Slow in {
       // given
       val readOnlyConfiguration = configuration.copy(readonly = true)
       CassandraContext.resource[IO](readOnlyConfiguration).use {
@@ -156,7 +157,7 @@ class BandwhichDServerApiV1Spec
 
           val request = Request[IO](
             method = Method.POST,
-            uri = uri"/v1/message",
+            uri = uri"/v1/messages",
             entity = EntityEncoder.stringEncoder.toEntity(
               ApiV1MessageV1Fixtures.exampleNetworkConfigurationMeasurementJson
             )
@@ -188,7 +189,53 @@ class BandwhichDServerApiV1Spec
       }
     }
 
-    "have JSON stats" in {
+    "have recordings" taggedAs Slow in {
+      CassandraContext.resource[IO](configuration).use { cassandraContext =>
+
+        // given
+        val request = Request[IO](
+          method = Method.GET,
+          uri = uri"/v1/messages",
+          headers = Headers(
+            Header.Raw(
+              ci"origin",
+              "http://localhost:3000"
+            )
+          )
+        )
+
+        val app = App[IO](
+          fixedTimeContext(MeasurementFixtures.fullTimeframe.end.instant),
+          cassandraContext,
+          configuration
+        )
+        val httpApp = app.httpApp
+
+        for {
+          _ <- CassandraTestMigration(cassandraContext).migrate(configuration)
+
+          _ <- app.measurementRepository
+            .record(MeasurementFixtures.exampleNetworkConfigurationMeasurement)
+          _ <- app.measurementRepository
+            .record(MeasurementFixtures.exampleNetworkUtilizationMeasurement)
+
+          // when
+          result <- httpApp.run(request)
+
+          // then
+          body <- result.body.through(fs2.text.utf8.decode).compile.string
+        } yield {
+          result.status shouldBe Ok
+          result.headers.headers should contain allOf (
+            Header.Raw(ci"access-control-allow-origin", "*"),
+            Header.Raw(ci"content-type", "application/json")
+          )
+          body shouldBe s"[${ApiV1MessageV1Fixtures.exampleNetworkConfigurationMeasurementJsonNoSpaces},${ApiV1MessageV1Fixtures.exampleNetworkUtilizationMeasurementJsonNoSpaces}]"
+        }
+      }
+    }
+
+    "have JSON stats" taggedAs Slow in {
       CassandraContext.resource[IO](configuration).use { cassandraContext =>
 
         // given
@@ -244,7 +291,7 @@ class BandwhichDServerApiV1Spec
       }
     }
 
-    "have DOT stats" in {
+    "have DOT stats" taggedAs Slow in {
       CassandraContext.resource[IO](configuration).use { cassandraContext =>
 
         // given

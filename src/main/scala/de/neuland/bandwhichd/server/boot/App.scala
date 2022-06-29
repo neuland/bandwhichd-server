@@ -82,6 +82,7 @@ class App[F[_]: Async](
   val messageController: MessageController[F] =
     MessageController[F](
       configuration = configuration,
+      timeContext = timeContext,
       measurementApplicationService = measurementApplicationService
     )
   val statsController: StatsController[F] =
