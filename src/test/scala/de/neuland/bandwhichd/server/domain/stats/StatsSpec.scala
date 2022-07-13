@@ -1,20 +1,65 @@
 package de.neuland.bandwhichd.server.domain.stats
 
-import fs2.Stream
 import cats.effect.IO
-import cats.implicits.*
 import cats.effect.testing.scalatest.AsyncIOSpec
-import com.comcast.ip4s.{Cidr, Host, Hostname, Ipv4Address, Port, SocketAddress}
+import cats.implicits.*
+import com.comcast.ip4s.*
 import de.neuland.bandwhichd.server.domain.*
+import de.neuland.bandwhichd.server.domain.stats.*
 import de.neuland.bandwhichd.server.domain.measurement.*
+import de.neuland.bandwhichd.server.test.Arbitraries.given
+import fs2.Stream
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.{AnyWordSpec, AsyncWordSpec}
+import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
+import com.comcast.ip4s.Arbitraries.given
+import org.scalatest.Assertion
 
 import java.time.{Duration, Instant, ZoneOffset, ZonedDateTime}
 import java.util.UUID
 
-class StatsSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
+class StatsSpec
+    extends AnyWordSpec
+    with ScalaCheckDrivenPropertyChecks
+    with Matchers {
   "Stats" when {
+    "empty" should {
+      "append configuration" in {
+        // given
+        forAll { (nc: Measurement.NetworkConfiguration) =>
+
+          // when
+          val result = buildStats(nc)
+
+          // then
+          result.hosts should contain(
+            MonitoredHost(
+              hostId = HostId(nc.machineId),
+              agentIds = Set(nc.agentId),
+              hostname = nc.hostname,
+              additionalHostnames = Set.empty,
+              interfaces = nc.interfaces.toSet
+            )
+          )
+          result.hosts should have size 1
+          result.connections shouldBe empty
+        }
+      }
+
+      "append network utilization" in {
+        // given
+        forAll { (nu: Measurement.NetworkUtilization) =>
+
+          // when
+          val result = buildStats(nu)
+
+          // then
+          result.hosts shouldBe empty
+          result.connections shouldBe empty
+        }
+      }
+    }
+
     "built from a network configuration" should {
 
       // given
@@ -33,30 +78,23 @@ class StatsSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
         )
       )
 
-      val measurementsStream: Stream[IO, Measurement[Timing]] =
-        Stream.emits(measurements)
-
       // when
-      val resultF: IO[Stats] = Stats[IO](measurementsStream)
+      val result: MonitoredStats = buildStats(measurements: _*)
 
       "have a host id" in {
         // then
-        resultF.asserting { result =>
-          result.hosts should have size 1
-          result.hosts.head.hostId shouldBe HostId(
-            MachineId(UUID.fromString("a814d0d9-3dca-4acf-985f-442dd4262228"))
-          )
-        }
+        result.hosts should have size 1
+        result.hosts.head.hostId shouldBe HostId(
+          MachineId(UUID.fromString("a814d0d9-3dca-4acf-985f-442dd4262228"))
+        )
       }
 
       "have the hostname" in {
         // then
-        resultF.asserting { result =>
-          result.hosts should have size 1
-          result.hosts.head.hostname shouldBe Hostname
-            .fromString("some-host.example.com")
-            .get
-        }
+        result.hosts should have size 1
+        result.hosts.head.hostname shouldBe Hostname
+          .fromString("some-host.example.com")
+          .get
       }
     }
 
@@ -90,22 +128,17 @@ class StatsSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
         )
       )
 
-      val measurementsStream: Stream[IO, Measurement[Timing]] =
-        Stream.emits(measurements)
-
       // when
-      val resultF: IO[Stats] = Stats[IO](measurementsStream)
+      val result: MonitoredStats = buildStats(measurements: _*)
 
       "not merge hosts with the same hostname" in {
         // then
-        resultF.asserting { result =>
-          result.hosts.foreach(host =>
-            host.hostname shouldBe Hostname
-              .fromString("some-host.example.com")
-              .get
-          )
-          result.hosts should have size 2
-        }
+        result.hosts.foreach(host =>
+          host.hostname shouldBe Hostname
+            .fromString("some-host.example.com")
+            .get
+        )
+        result.hosts should have size 2
       }
     }
 
@@ -139,34 +172,28 @@ class StatsSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
         )
       )
 
-      val measurementsStream: Stream[IO, Measurement[Timing]] =
-        Stream.emits(measurements)
-
       // when
-      val resultF: IO[Stats] = Stats[IO](measurementsStream)
+      val result: MonitoredStats = buildStats(measurements: _*)
 
       "merge hosts with the same agent id" in {
         // then
-        resultF.asserting { result =>
-          result.hosts should have size 1
-          result.hosts.head.hostId shouldBe HostId(
-            MachineId(UUID.fromString("a814d0d9-3dca-4acf-985f-442dd4262228"))
-          )
-        }
+        result.hosts should have size 1
+        result.hosts.head.hostId shouldBe HostId(
+          MachineId(UUID.fromString("a814d0d9-3dca-4acf-985f-442dd4262228"))
+        )
       }
 
       "have primary hostname from most recent data and keep track of other hostnames" in {
         // then
-        resultF.asserting { result =>
-          result.hosts should have size 1
-          result.hosts.head.hostname shouldBe Hostname
-            .fromString("some-host.example.com")
-            .get
-          result.hosts.head.additionalHostnames should have size 1
-          result.hosts.head.additionalHostnames should contain(
-            Hostname.fromString("another-host.example.com").get
-          )
-        }
+        result.hosts should have size 1
+        val monitoredHosts = result.hosts
+        monitoredHosts.head.hostname shouldBe Hostname
+          .fromString("some-host.example.com")
+          .get
+        monitoredHosts.head.additionalHostnames should have size 1
+        monitoredHosts.head.additionalHostnames should contain(
+          Hostname.fromString("another-host.example.com").get
+        )
       }
     }
 
@@ -302,55 +329,32 @@ class StatsSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
         )
       )
 
-      val measurementsStream: Stream[IO, Measurement[Timing]] =
-        Stream.emits(measurements)
-
       // when
-      val resultF: IO[Stats] = Stats[IO](measurementsStream)
-
-      def expectConnection(
-          hostIds: (HostId, HostId)
-      )(
-          result: Stats
-      ): (MonitoredHost, AnyHost) = {
-        result.findConnection(hostIds) match
-          case Some(connection) => connection
-          case None =>
-            val connectionHostIds = result.connections.map(connection =>
-              connection._1.hostId -> connection._2.hostId
-            )
-            fail(
-              s"expected to find connection between $hostIds in $connectionHostIds"
-            )
-      }
+      val result: MonitoredStats = buildStats(measurements: _*)
 
       "have all hosts" in {
         // then
-        resultF.asserting { result =>
-          result.hosts should have size 2
-          result.hosts.map(_.hostId) should contain allOf (hostId1, hostId2)
-        }
+        result.hosts.map(_.hostId) should contain theSameElementsAs Set(
+          hostId1,
+          hostId2
+        )
       }
 
       "have all connections" in {
         // then
-        resultF.asserting { result =>
-          result.connections should have size 2
+        val externalHost = Host.fromString("10.20.87.210").get
+        val externalHostId = HostId(externalHost)
 
-          expectConnection(hostId1, hostId2)(result)
-
-          val externalHost = Host.fromString("10.20.87.210").get
-          val externalHostId = HostId(externalHost)
-          val externalConnection =
-            expectConnection(hostId1, externalHostId)(result)
-
-          externalConnection._2 match
-            case unidentifiedHost @ UnidentifiedHost(host) =>
-              host shouldBe externalHost
-              unidentifiedHost.hostId shouldBe externalHostId
-            case _ => fail("expected unidentified host")
-        }
+        result.connections should contain theSameElementsAs Set(
+          hostId1 -> hostId2,
+          hostId1 -> externalHostId
+        )
       }
     }
   }
+
+  private def buildStats(measurements: Measurement[Timing]*): MonitoredStats =
+    measurements.foldLeft(Stats.empty) { case (stats, measurement) =>
+      stats.append(measurement)
+    }
 }

@@ -23,9 +23,9 @@ object HostId {
       UUID.nameUUIDFromBytes(host.toString.getBytes(UTF_8))
   }
 
-  def apply(machineId: MachineId): HostId =
+  def apply(machineId: MachineId): MachineIdHostId =
     MachineIdHostId(machineId)
 
-  def apply(host: Host): HostId =
+  def apply(host: Host): HostHostId =
     HostHostId(host)
 }

@@ -353,11 +353,11 @@ class BandwhichdServerApiV1Spec
         )
         body shouldBe
           """digraph {
-                |    "c414c2da-714c-4b68-b97e-3f31e18053d2" [label="some-host.example.com"];
-                |    "959619ee-30a2-3bc8-9b79-4384b5f3f05d" [label="192.168.10.34"];
-                |    "c414c2da-714c-4b68-b97e-3f31e18053d2" -> "c414c2da-714c-4b68-b97e-3f31e18053d2";
-                |    "c414c2da-714c-4b68-b97e-3f31e18053d2" -> "959619ee-30a2-3bc8-9b79-4384b5f3f05d";
-                |}""".stripMargin
+            |    "c414c2da-714c-4b68-b97e-3f31e18053d2" [label="some-host.example.com"];
+            |    "959619ee-30a2-3bc8-9b79-4384b5f3f05d" [label="192.168.10.34"];
+            |    "c414c2da-714c-4b68-b97e-3f31e18053d2" -> "c414c2da-714c-4b68-b97e-3f31e18053d2";
+            |    "c414c2da-714c-4b68-b97e-3f31e18053d2" -> "959619ee-30a2-3bc8-9b79-4384b5f3f05d";
+            |}""".stripMargin
       }
     }
   }

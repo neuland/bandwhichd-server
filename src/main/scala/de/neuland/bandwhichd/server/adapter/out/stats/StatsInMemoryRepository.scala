@@ -2,20 +2,20 @@ package de.neuland.bandwhichd.server.adapter.out.stats
 
 import cats.Monad
 import cats.effect.Sync
-import de.neuland.bandwhichd.server.domain.stats.{Stats, StatsRepository}
+import de.neuland.bandwhichd.server.domain.stats.*
 
 import java.util.concurrent.atomic.AtomicReference
 
 class StatsInMemoryRepository[F[_]: Sync] extends StatsRepository[F] {
-  private val statsStore: AtomicReference[Stats] =
-    new AtomicReference[Stats](Stats.empty)
+  private val statsStore: AtomicReference[MonitoredStats] =
+    new AtomicReference[MonitoredStats](Stats.empty)
 
-  override def safe(stats: Stats): F[Unit] =
+  override def safe(stats: MonitoredStats): F[Unit] =
     Sync[F].blocking {
       statsStore.set(stats)
     }
 
-  override def get: F[Stats] =
+  override def get: F[MonitoredStats] =
     Sync[F].blocking {
       statsStore.get()
     }

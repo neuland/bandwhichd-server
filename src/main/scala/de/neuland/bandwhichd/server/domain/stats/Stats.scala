@@ -4,43 +4,38 @@ import cats.Monad
 import cats.effect.kernel.Concurrent
 import cats.implicits.*
 import com.comcast.ip4s.*
+import de.neuland.bandwhichd.server.domain.*
 import de.neuland.bandwhichd.server.domain.measurement.{Measurement, Timing}
-import de.neuland.bandwhichd.server.domain.{AgentId, Interface, InterfaceName}
+import de.neuland.bandwhichd.server.domain.stats.Stats.Bundle
 import de.neuland.bandwhichd.server.lib.time.Interval
 import de.neuland.bandwhichd.server.lib.time.cats.TimeContext
 import fs2.Stream
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.time.{Duration, Instant}
 import java.time.temporal.ChronoUnit.HOURS
+import java.time.{Duration, Instant}
 import java.util.UUID
+import scala.reflect.ClassTag
 
-case class Stats(
-    hosts: Set[MonitoredHost],
-    connections: Set[(MonitoredHost, AnyHost)]
+class Stats[L <: HostId, H <: AnyHost[L], R <: HostId] private (
+    private val bundles: Map[L, Stats.Bundle[L, H, R]]
 ) {
-  def findConnection(
-      hostIds: (HostId, HostId)
-  ): Option[(MonitoredHost, AnyHost)] =
-    connections.find(connection =>
-      (connection._1.hostId, connection._2.hostId) == hostIds
-    )
+  def hosts: Set[H] =
+    bundles.values.map(_.host).toSet
 
-  def monitoredNetworks: Set[Cidr[IpAddress]] =
-    hosts
-      .flatMap(_.interfaces)
-      .flatMap(_.networks)
+  def hostIds: Set[L] =
+    bundles.values.map(_.host.hostId).toSet
 
-  def withoutHostsOutsideOfMonitoredNetworks: Stats =
-    copy(connections = connections.filter {
-      _ match {
-        case (_, _: MonitoredHost) => true
-        case (_, UnidentifiedHost(ipAddress: IpAddress)) =>
-          monitoredNetworks.exists(_.contains(ipAddress))
-        case _ => false
+  def connections: Set[(L, R)] =
+    bundles.values.flatMap { bundle =>
+      bundle.remoteHostIds.map { remoteHostId =>
+        bundle.host.hostId -> remoteHostId
       }
-    })
+    }.toSet
 }
+
+type AnyStats = Stats[HostId, AnyHost[HostId], HostId]
+type MonitoredStats = Stats[HostId.MachineIdHostId, MonitoredHost, HostId]
 
 object Stats {
   val defaultTimeframeDuration: Duration = Duration.ofHours(2)
@@ -52,98 +47,149 @@ object Stats {
       now <- timeContext.now
     } yield Timing.Timeframe(Interval(now.minus(defaultTimeframeDuration), now))
 
+  val empty: MonitoredStats = new Stats(Map.empty)
+
   def apply[F[_]: Concurrent](
       measurements: Stream[F, Measurement[Timing]]
-  ): F[Stats] =
-    for {
-      measurements <- {
-        measurements.compile.fold[
-          (
-              Seq[Measurement.NetworkConfiguration],
-              Seq[Measurement.NetworkUtilization]
-          )
-        ](Seq.empty -> Seq.empty) { case ((ncs, nus), m) =>
-          m match
-            case nc: Measurement.NetworkConfiguration =>
-              ncs.appended(nc) -> nus
-            case nu: Measurement.NetworkUtilization =>
-              ncs -> nus.appended(nu)
-        }
-      }
-    } yield {
-      val ncs: Seq[Measurement.NetworkConfiguration] = measurements._1
-      val nus: Seq[Measurement.NetworkUtilization] = measurements._2
-
-      val hosts =
-        ncs.foldLeft[Set[MonitoredHost]](
-          Set.empty
-        ) { case (alreadyIdentifiedMonitoredHosts, networkConfiguration) =>
-          val matches = alreadyIdentifiedMonitoredHosts.filter(monitoredHost =>
-            monitoredHost.hostId == HostId(networkConfiguration.machineId)
-          )
-
-          (alreadyIdentifiedMonitoredHosts -- matches) + MonitoredHost(
-            hostId = HostId(networkConfiguration.machineId),
-            agentIds =
-              matches.flatMap(_.agentIds) + networkConfiguration.agentId,
-            hostname = networkConfiguration.hostname,
-            additionalHostnames = (matches.map(_.hostname) ++
-              matches.flatMap(_.additionalHostnames)) -
-              networkConfiguration.hostname,
-            interfaces =
-              matches.flatMap(_.interfaces) ++ networkConfiguration.interfaces
-          )
-        }
-
-      def findMonitoredHostByAgentId(agentId: AgentId): Option[MonitoredHost] =
-        hosts.find(_.agentIds.contains(agentId))
-
-      def findMonitoredHostByHost(host: Host): Option[MonitoredHost] =
-        hosts.find(monitoredHost =>
-          host match
-            case hostname: Hostname =>
-              monitoredHost.hostnames.contains(hostname)
-            case ipAddress: IpAddress =>
-              monitoredHost.interfaces.toSeq
-                .flatMap(_.networks)
-                .exists(cidr => cidr.address == ipAddress)
-            case _ => false
-        )
-
-      def host2AnyHost(host: Host): AnyHost =
-        findMonitoredHostByHost(host).getOrElse(UnidentifiedHost(host))
-
-      val connections =
-        nus.foldLeft[Set[(MonitoredHost, AnyHost)]](
-          Set.empty[(MonitoredHost, AnyHost)]
-        ) { case (alreadyIdentifiedConnections, networkUtilization) =>
-          val maybeMonitoredHostByAgentId =
-            findMonitoredHostByAgentId(networkUtilization.agentId)
-
-          maybeMonitoredHostByAgentId.fold {
-            alreadyIdentifiedConnections
-          } { monitoredHostByAgentId =>
-            networkUtilization.connections
-              .foldLeft[Set[(MonitoredHost, AnyHost)]](
-                alreadyIdentifiedConnections
-              ) { case (alreadyIdentifiedConnections2, connection) =>
-                alreadyIdentifiedConnections2 + (monitoredHostByAgentId -> host2AnyHost(
-                  connection.remoteSocket.value.host
-                ))
-              }
-          }
-
-        }
-
-      Stats(
-        hosts = hosts,
-        connections = connections
-      )
+  ): F[MonitoredStats] =
+    measurements.compile.fold(Stats.empty) { case (stats, measurement) =>
+      stats.append(measurement)
     }
 
-  val empty: Stats =
-    Stats(
-      hosts = Set.empty,
-      connections = Set.empty
-    )
+  extension (stats: MonitoredStats) {
+    def append(
+        measurement: Measurement[Timing]
+    ): MonitoredStats =
+      measurement match
+        case Measurement.NetworkConfiguration(
+              agentId,
+              timing,
+              machineId,
+              hostname,
+              interfaces,
+              _
+            ) =>
+          val hostId: HostId.MachineIdHostId = HostId(machineId)
+
+          val maybeBundle
+              : Option[Bundle[HostId.MachineIdHostId, MonitoredHost, HostId]] =
+            stats.bundles
+              .get(hostId)
+              .orElse {
+                stats.bundles.values.find(_.host.agentIds.contains(agentId))
+              }
+              .orElse {
+                stats.bundles.values.find(_.host.hostnames.contains(hostname))
+              }
+
+          val bundle = maybeBundle.fold {
+            // TODO: Remotes of other hosts?
+            Stats.Bundle(
+              host = MonitoredHost(
+                hostId = hostId,
+                agentIds = Set(agentId),
+                hostname = hostname,
+                additionalHostnames = Set.empty,
+                interfaces = interfaces.toSet
+              ),
+              lastSeenAt = timing,
+              remoteHostIds = Set.empty
+            )
+          } { bundle =>
+            bundle.copy(
+              host = MonitoredHost(
+                hostId = hostId,
+                agentIds = bundle.host.agentIds + agentId,
+                hostname = hostname,
+                additionalHostnames = bundle.host.hostnames - hostname,
+                interfaces = bundle.host.interfaces ++ interfaces
+              ),
+              lastSeenAt = timing
+            )
+          }
+
+          new Stats(stats.bundles + (hostId -> bundle))
+
+        case Measurement.NetworkUtilization(
+              agentId,
+              timing,
+              connections
+            ) =>
+          stats.bundles.values
+            .find(_.host.agentIds.contains(agentId))
+            .fold(stats) { bundle =>
+              new Stats(
+                stats.bundles + (bundle.host.hostId -> bundle.copy(
+                  lastSeenAt = timing.end,
+                  remoteHostIds = bundle.remoteHostIds ++ connections.map {
+                    connection =>
+
+                      val remoteHost: Host = connection.remoteSocket.value.host
+                      val maybeRemoteIpAddress = remoteHost match
+                        case ipAddress: IpAddress => Some(ipAddress)
+                        case _                    => None
+
+                      val maybeRemoteBundle =
+                        maybeRemoteIpAddress.flatMap { remoteIpAddress =>
+                          stats.bundles.values
+                            .find(
+                              _.host.interfaces.exists(
+                                _.networks
+                                  .exists(
+                                    _.address == remoteIpAddress
+                                  )
+                              )
+                            )
+
+                        }
+
+                      val remoteHostId = maybeRemoteBundle
+                        .fold(HostId(connection.remoteSocket.value.host))(
+                          _.host.hostId
+                        )
+
+                      remoteHostId
+                  }
+                ))
+              )
+            }
+
+    def monitoredNetworks: Set[Cidr[IpAddress]] =
+      stats.hosts
+        .flatMap(_.interfaces)
+        .flatMap(_.networks)
+
+    def withoutHostsOutsideOfMonitoredNetworks: MonitoredStats =
+      new Stats(
+        stats.bundles.view.mapValues { bundle =>
+          bundle.copy(
+            remoteHostIds = bundle.remoteHostIds.filter {
+              _ match
+                case _: HostId.MachineIdHostId => true
+                case HostId.HostHostId(ipAddress: IpAddress) =>
+                  stats.monitoredNetworks.exists(_.contains(ipAddress))
+                case _ => false
+            }
+          )
+        }.toMap
+      )
+
+    def unidentifiedRemoteHosts: Set[UnidentifiedHost] =
+      stats.bundles.values.flatMap { bundle =>
+        bundle.remoteHostIds.flatMap {
+          _ match
+            case HostId.HostHostId(host)   => Some(UnidentifiedHost(host))
+            case HostId.MachineIdHostId(_) => None
+        }
+      }.toSet
+
+    def allHosts: Set[AnyHost[HostId]] =
+      stats.hosts ++ stats.unidentifiedRemoteHosts
+  }
+
+  private case class Bundle[L <: HostId, H <: AnyHost[L], R <: HostId](
+      host: H,
+      lastSeenAt: Timing.Timestamp,
+      remoteHostIds: Set[R]
+  )
 }

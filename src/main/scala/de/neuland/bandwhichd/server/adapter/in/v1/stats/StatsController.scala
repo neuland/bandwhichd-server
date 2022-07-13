@@ -4,9 +4,12 @@ import cats.data.NonEmptyList
 import cats.effect.Async
 import cats.implicits.*
 import de.neuland.bandwhichd.server.application.StatsApplicationService
+import de.neuland.bandwhichd.server.domain.stats.*
+import de.neuland.bandwhichd.server.lib.dot.Dot
 import de.neuland.bandwhichd.server.lib.http4s.Helpers
 import de.neuland.bandwhichd.server.lib.http4s.dot.DotHttp4s
 import io.circe.syntax.*
+import io.circe.Json
 import org.http4s.dsl.{io as _, *}
 import org.http4s.headers.*
 import org.http4s.implicits.*
@@ -23,17 +26,19 @@ class StatsController[F[_]: Async](
 
   private def stats(request: Request[F]): F[Response[F]] =
     for {
-      stats <- statsApplicationService.get
+      monitoredStats: MonitoredStats <- statsApplicationService.get
       response <- {
+        val statsWithinMonitoredNetworks: MonitoredStats =
+          monitoredStats.withoutHostsOutsideOfMonitoredNetworks
         if (useDotInsteadOfJson(request.headers)) {
           import de.neuland.bandwhichd.server.lib.http4s.dot.DotHttp4s.dotEntityEncoder
-          Ok(Stats.dotEncoder(stats.withoutHostsOutsideOfMonitoredNetworks))
+          val dot: Dot = StatsCodecs.dotEncoder(statsWithinMonitoredNetworks)
+          Ok(dot)
         } else {
           import org.http4s.circe.CirceEntityEncoder.circeEntityEncoder
-          Ok(
-            stats.withoutHostsOutsideOfMonitoredNetworks
-              .asJson(Stats.circeEncoder)
-          )
+          val json: Json =
+            statsWithinMonitoredNetworks.asJson(StatsCodecs.circeEncoder)
+          Ok(json)
         }
       }
     } yield response

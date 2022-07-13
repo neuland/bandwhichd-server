@@ -52,9 +52,12 @@ object Timing {
       )
 
     def apply(start: Timestamp, duration: Duration): Timeframe =
-      apply(value = Interval(start.instant, duration))
+      apply(Interval(start.instant, duration))
 
     def apply(timestamps: NonEmptySeq[Timestamp]): Timeframe =
-      Timeframe(Interval(timestamps.map(_.value)))
+      apply(Interval(timestamps.map(_.value)))
+
+    def apply(head: Timestamp, tail: Timestamp*): Timeframe =
+      apply(NonEmptySeq(head, tail))
   }
 }
