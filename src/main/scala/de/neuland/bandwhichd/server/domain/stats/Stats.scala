@@ -28,14 +28,31 @@ class Stats[L <: HostId, H <: AnyHost[L], R <: HostId] private (
 
   def connections: Set[(L, R)] =
     bundles.values.flatMap { bundle =>
-      bundle.remoteHostIds.map { remoteHostId =>
+      bundle.connections.keys.map { remoteHostId =>
         bundle.host.hostId -> remoteHostId
       }
     }.toSet
+
+  def dropBefore(timestamp: Timing.Timestamp): Stats[L, H, R] =
+    new Stats(
+      bundles
+        .filterNot { case (_, bundle) =>
+          bundle.lastSeenAt.instant.isBefore(timestamp.instant)
+        }
+        .view
+        .mapValues(bundle =>
+          bundle.copy(
+            connections = bundle.connections.filterNot { case (_, connection) =>
+              connection.lastSeenAt.instant.isBefore(timestamp.instant)
+            }
+          )
+        )
+        .toMap
+    )
 }
 
 type AnyStats = Stats[HostId, AnyHost[HostId], HostId]
-type MonitoredStats = Stats[HostId.MachineIdHostId, MonitoredHost, HostId]
+type MonitoredStats = Stats[HostId.MachineId, MonitoredHost, HostId]
 
 object Stats {
   val defaultTimeframeDuration: Duration = Duration.ofHours(2)
@@ -69,10 +86,10 @@ object Stats {
               interfaces,
               _
             ) =>
-          val hostId: HostId.MachineIdHostId = HostId(machineId)
+          val hostId: HostId.MachineId = HostId(machineId)
 
           val maybeBundle
-              : Option[Bundle[HostId.MachineIdHostId, MonitoredHost, HostId]] =
+              : Option[Bundle[HostId.MachineId, MonitoredHost, HostId]] =
             stats.bundles
               .get(hostId)
               .orElse {
@@ -93,7 +110,7 @@ object Stats {
                 interfaces = interfaces.toSet
               ),
               lastSeenAt = timing,
-              remoteHostIds = Set.empty
+              connections = Map.empty
             )
           } { bundle =>
             bundle.copy(
@@ -121,7 +138,7 @@ object Stats {
               new Stats(
                 stats.bundles + (bundle.host.hostId -> bundle.copy(
                   lastSeenAt = timing.end,
-                  remoteHostIds = bundle.remoteHostIds ++ connections.map {
+                  connections = bundle.connections ++ connections.map {
                     connection =>
 
                       val remoteHost: Host = connection.remoteSocket.value.host
@@ -148,7 +165,9 @@ object Stats {
                           _.host.hostId
                         )
 
-                      remoteHostId
+                      remoteHostId -> Bundle.Connection(
+                        lastSeenAt = timing.end
+                      )
                   }
                 ))
               )
@@ -163,10 +182,10 @@ object Stats {
       new Stats(
         stats.bundles.view.mapValues { bundle =>
           bundle.copy(
-            remoteHostIds = bundle.remoteHostIds.filter {
-              _ match
-                case _: HostId.MachineIdHostId => true
-                case HostId.HostHostId(ipAddress: IpAddress) =>
+            connections = bundle.connections.filter {
+              _._1 match
+                case _: HostId.MachineId => true
+                case HostId.Host(ipAddress: IpAddress) =>
                   stats.monitoredNetworks.exists(_.contains(ipAddress))
                 case _ => false
             }
@@ -176,10 +195,10 @@ object Stats {
 
     def unidentifiedRemoteHosts: Set[UnidentifiedHost] =
       stats.bundles.values.flatMap { bundle =>
-        bundle.remoteHostIds.flatMap {
-          _ match
-            case HostId.HostHostId(host)   => Some(UnidentifiedHost(host))
-            case HostId.MachineIdHostId(_) => None
+        bundle.connections.flatMap {
+          _._1 match
+            case HostId.Host(host)   => Some(UnidentifiedHost(host))
+            case HostId.MachineId(_) => None
         }
       }.toSet
 
@@ -187,9 +206,15 @@ object Stats {
       stats.hosts ++ stats.unidentifiedRemoteHosts
   }
 
-  private case class Bundle[L <: HostId, H <: AnyHost[L], R <: HostId](
+  private[Stats] case class Bundle[L <: HostId, H <: AnyHost[L], R <: HostId](
       host: H,
       lastSeenAt: Timing.Timestamp,
-      remoteHostIds: Set[R]
+      connections: Map[R, Bundle.Connection]
   )
+
+  private[Stats] object Bundle {
+    private[Stats] case class Connection(
+        lastSeenAt: Timing.Timestamp
+    )
+  }
 }

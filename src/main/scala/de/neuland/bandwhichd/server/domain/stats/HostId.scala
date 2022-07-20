@@ -1,7 +1,7 @@
 package de.neuland.bandwhichd.server.domain.stats
 
-import com.comcast.ip4s.{Host, Hostname, IDN}
-import de.neuland.bandwhichd.server.domain.MachineId
+import com.comcast.ip4s.{Host => Ip4sHost, Hostname, IDN}
+import de.neuland.bandwhichd.server.domain.{MachineId => BandwhichdMachineId}
 
 import java.nio.charset.StandardCharsets
 import java.nio.charset.StandardCharsets.UTF_8
@@ -13,19 +13,19 @@ sealed trait HostId {
 }
 
 object HostId {
-  case class MachineIdHostId(machineId: MachineId) extends HostId {
+  case class MachineId(machineId: BandwhichdMachineId) extends HostId {
     override def uuid: UUID =
       machineId.value
   }
 
-  case class HostHostId(host: Host) extends HostId {
+  case class Host(host: Ip4sHost) extends HostId {
     override def uuid: UUID =
       UUID.nameUUIDFromBytes(host.toString.getBytes(UTF_8))
   }
 
-  def apply(machineId: MachineId): MachineIdHostId =
-    MachineIdHostId(machineId)
+  def apply(machineId: BandwhichdMachineId): MachineId =
+    MachineId(machineId)
 
-  def apply(host: Host): HostHostId =
-    HostHostId(host)
+  def apply(host: Ip4sHost): Host =
+    Host(host)
 }

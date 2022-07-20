@@ -13,6 +13,8 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.{AnyWordSpec, AsyncWordSpec}
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import com.comcast.ip4s.Arbitraries.given
+import de.neuland.bandwhichd.server.lib.time.Interval
+import org.scalacheck.Gen
 import org.scalatest.Assertion
 
 import java.time.{Duration, Instant, ZoneOffset, ZonedDateTime}
@@ -351,7 +353,145 @@ class StatsSpec
         )
       }
     }
+
+    "dropping" should {
+      "not keep host without update after drop" in {
+        // given
+        val ncTemplate = ncGen.sample.get
+        val nuTemplate = nuGen.sample.get
+
+        val baseTiming = ncTemplate.timestamp.instant
+
+        val nc = ncTemplate.copy(
+          timing = Timing.Timestamp(baseTiming),
+          interfaces = Seq.empty,
+          openSockets = Seq.empty
+        )
+        val nu = nuTemplate.copy(
+          timing = Timing.Timeframe(
+            Interval(baseTiming.plusMillis(2), nuTemplate.timing.duration)
+          )
+        )
+        val stats: MonitoredStats = buildStats(nc, nu)
+        val timestamp =
+          Timing.Timestamp(baseTiming.plusSeconds(15))
+
+        // when
+        val result = stats.dropBefore(timestamp)
+
+        // then
+        result.hosts shouldBe empty
+      }
+
+      "keep host with configuration update after drop" in {
+        // given
+        val ncTemplate = ncGen.sample.get
+
+        val baseTiming = ncTemplate.timestamp.instant
+
+        val nc1 = ncTemplate.copy(
+          timing = Timing.Timestamp(baseTiming),
+          interfaces = Seq.empty,
+          openSockets = Seq.empty
+        )
+        val nc2 = nc1.copy(
+          timing = Timing.Timestamp(baseTiming.plusSeconds(60))
+        )
+        val stats: MonitoredStats = buildStats(nc1, nc2)
+        val timestamp =
+          Timing.Timestamp(baseTiming.plusSeconds(15))
+
+        // when
+        val result = stats.dropBefore(timestamp)
+
+        // then
+        result.hosts should not be empty
+      }
+
+      "keep host with utilization update timeframe ending after drop" in {
+        // given
+        val ncTemplate = ncGen.sample.get
+        val nuTemplate = nuGen.sample.get.copy(agentId = ncTemplate.agentId)
+
+        val baseTiming = ncTemplate.timestamp.instant
+
+        val nc = ncTemplate.copy(
+          timing = Timing.Timestamp(baseTiming),
+          interfaces = Seq.empty,
+          openSockets = Seq.empty
+        )
+        val nu = nuTemplate.copy(
+          timing = Timing.Timeframe(
+            Interval(baseTiming.plusMillis(4), nuTemplate.timing.duration)
+          )
+        )
+        val stats: MonitoredStats = buildStats(nc, nu)
+        val timestamp =
+          Timing.Timestamp(baseTiming.plusSeconds(5))
+
+        // when
+        val result = stats.dropBefore(timestamp)
+
+        // then
+        result.hosts should not be empty
+      }
+
+      "keep only connections from utilization update after drop" in {
+        // given
+        val host1 = host"host1"
+        val host2 = host"host2"
+        val host3 = host"host3"
+
+        val ncTemplate = ncGen.sample.get
+        val nuTemplate = nuGen.sample.get.copy(agentId = ncTemplate.agentId)
+        val con1 = conGen.sample.get.copy(
+          remoteSocket = Remote(SocketAddress(host1, port"8080"))
+        )
+        val con2 = conGen.sample.get.copy(
+          remoteSocket = Remote(SocketAddress(host2, port"8080"))
+        )
+        val con3 = conGen.sample.get.copy(
+          remoteSocket = Remote(SocketAddress(host3, port"8080"))
+        )
+
+        val baseTiming = ncTemplate.timestamp.instant
+
+        val nc = ncTemplate.copy(
+          timing = Timing.Timestamp(baseTiming),
+          interfaces = Seq.empty,
+          openSockets = Seq.empty
+        )
+        val nuBefore = nuTemplate.copy(
+          timing = Timing.Timeframe(
+            Interval(baseTiming, nuTemplate.timing.duration)
+          ),
+          connections = Seq(con1, con2)
+        )
+        val nuAfter = nuTemplate.copy(
+          timing = Timing.Timeframe(
+            Interval(baseTiming.plusSeconds(10), nuTemplate.timing.duration)
+          ),
+          connections = Seq(con2, con3)
+        )
+        val stats: MonitoredStats = buildStats(nc, nuBefore, nuAfter)
+        val timestamp =
+          Timing.Timestamp(baseTiming.plusSeconds(15))
+
+        // when
+        val result = stats.dropBefore(timestamp)
+
+        // then
+        result.connections.map(_._2) should contain theSameElementsAs Set(
+          HostId(con2.remoteSocket.value.host),
+          HostId(con3.remoteSocket.value.host)
+        )
+      }
+    }
   }
+
+  private def ncGen = summon[Gen[Measurement.NetworkConfiguration]]
+  private def nuGen = summon[Gen[Measurement.NetworkUtilization]]
+  private def conGen = summon[Gen[Connection]]
 
   private def buildStats(measurements: Measurement[Timing]*): MonitoredStats =
     measurements.foldLeft(Stats.empty) { case (stats, measurement) =>

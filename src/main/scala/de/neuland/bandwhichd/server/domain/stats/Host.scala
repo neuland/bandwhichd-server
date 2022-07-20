@@ -30,21 +30,21 @@ case class UnidentifiedHost(
 }
 
 object UnidentifiedHost {
-  type HostId = HostId.HostHostId
+  type HostId = HostId.Host
 }
 
 sealed trait IdentifiedHost[+I <: HostId] extends AnyHost[I]
 
-sealed trait MachineIdHost extends IdentifiedHost[HostId.MachineIdHostId] {
+sealed trait MachineIdHost extends IdentifiedHost[HostId.MachineId] {
   def hostId: MachineIdHost.HostId
 }
 
 object MachineIdHost {
-  type HostId = HostId.MachineIdHostId
+  type HostId = HostId.MachineId
 }
 
 case class MonitoredHost(
-    hostId: HostId.MachineIdHostId,
+    hostId: HostId.MachineId,
     agentIds: Set[AgentId],
     hostname: Hostname,
     additionalHostnames: Set[Hostname],
