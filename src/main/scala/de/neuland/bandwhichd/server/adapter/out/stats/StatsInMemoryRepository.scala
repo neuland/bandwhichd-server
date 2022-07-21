@@ -19,4 +19,9 @@ class StatsInMemoryRepository[F[_]: Sync] extends StatsRepository[F] {
     Sync[F].blocking {
       statsStore.get()
     }
+
+  override def update(f: MonitoredStats => MonitoredStats): F[MonitoredStats] =
+    Sync[F].blocking {
+      statsStore.updateAndGet(stats => f(stats))
+    }
 }

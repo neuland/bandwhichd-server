@@ -4,18 +4,18 @@ import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import cats.implicits.*
 import com.comcast.ip4s.*
+import com.comcast.ip4s.Arbitraries.given
 import de.neuland.bandwhichd.server.domain.*
-import de.neuland.bandwhichd.server.domain.stats.*
 import de.neuland.bandwhichd.server.domain.measurement.*
-import de.neuland.bandwhichd.server.test.Arbitraries.given
+import de.neuland.bandwhichd.server.domain.stats.*
+import de.neuland.bandwhichd.server.lib.time.Interval
+import de.neuland.bandwhichd.server.test.Arbitraries.{sample, given}
 import fs2.Stream
+import org.scalacheck.Gen
+import org.scalatest.Assertion
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.{AnyWordSpec, AsyncWordSpec}
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
-import com.comcast.ip4s.Arbitraries.given
-import de.neuland.bandwhichd.server.lib.time.Interval
-import org.scalacheck.Gen
-import org.scalatest.Assertion
 
 import java.time.{Duration, Instant, ZoneOffset, ZonedDateTime}
 import java.util.UUID
@@ -357,8 +357,8 @@ class StatsSpec
     "dropping" should {
       "not keep host without update after drop" in {
         // given
-        val ncTemplate = ncGen.sample.get
-        val nuTemplate = nuGen.sample.get
+        val ncTemplate = ncGen()
+        val nuTemplate = nuGen()
 
         val baseTiming = ncTemplate.timestamp.instant
 
@@ -385,7 +385,7 @@ class StatsSpec
 
       "keep host with configuration update after drop" in {
         // given
-        val ncTemplate = ncGen.sample.get
+        val ncTemplate = ncGen()
 
         val baseTiming = ncTemplate.timestamp.instant
 
@@ -410,8 +410,8 @@ class StatsSpec
 
       "keep host with utilization update timeframe ending after drop" in {
         // given
-        val ncTemplate = ncGen.sample.get
-        val nuTemplate = nuGen.sample.get.copy(agentId = ncTemplate.agentId)
+        val ncTemplate = ncGen()
+        val nuTemplate = nuGen().copy(agentId = ncTemplate.agentId)
 
         val baseTiming = ncTemplate.timestamp.instant
 
@@ -442,15 +442,15 @@ class StatsSpec
         val host2 = host"host2"
         val host3 = host"host3"
 
-        val ncTemplate = ncGen.sample.get
-        val nuTemplate = nuGen.sample.get.copy(agentId = ncTemplate.agentId)
-        val con1 = conGen.sample.get.copy(
+        val ncTemplate = ncGen()
+        val nuTemplate = nuGen().copy(agentId = ncTemplate.agentId)
+        val con1 = conGen().copy(
           remoteSocket = Remote(SocketAddress(host1, port"8080"))
         )
-        val con2 = conGen.sample.get.copy(
+        val con2 = conGen().copy(
           remoteSocket = Remote(SocketAddress(host2, port"8080"))
         )
-        val con3 = conGen.sample.get.copy(
+        val con3 = conGen().copy(
           remoteSocket = Remote(SocketAddress(host3, port"8080"))
         )
 
@@ -489,9 +489,9 @@ class StatsSpec
     }
   }
 
-  private def ncGen = summon[Gen[Measurement.NetworkConfiguration]]
-  private def nuGen = summon[Gen[Measurement.NetworkUtilization]]
-  private def conGen = summon[Gen[Connection]]
+  private def ncGen = sample[Measurement.NetworkConfiguration]
+  private def nuGen = sample[Measurement.NetworkUtilization]
+  private def conGen = sample[Connection]
 
   private def buildStats(measurements: Measurement[Timing]*): MonitoredStats =
     measurements.foldLeft(Stats.empty) { case (stats, measurement) =>

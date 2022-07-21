@@ -129,7 +129,7 @@ class BandwhichdServerApiV1Spec
       )
 
       val httpApp = inMemoryApp[IO](
-        unimplementedTimeContext,
+        fixedTimeContext(MeasurementFixtures.fullTimeframe.end.instant),
         configuration
       ).httpApp
 
@@ -277,12 +277,10 @@ class BandwhichdServerApiV1Spec
       val httpApp = app.httpApp
 
       for {
-        _ <- app.measurementsRepository
+        _ <- app.measurementApplicationService
           .record(MeasurementFixtures.exampleNetworkConfigurationMeasurement)
-        _ <- app.measurementsRepository
+        _ <- app.measurementApplicationService
           .record(MeasurementFixtures.exampleNetworkUtilizationMeasurement)
-        aggregationSchedule <- app.aggregationScheduler.schedule
-        _ <- aggregationSchedule.work.run
 
         // when
         result <- httpApp.run(request)
@@ -331,14 +329,12 @@ class BandwhichdServerApiV1Spec
       val httpApp = app.httpApp
 
       for {
-        _ <- app.measurementsRepository.record(
+        _ <- app.measurementApplicationService.record(
           MeasurementFixtures.exampleNetworkConfigurationMeasurement
         )
-        _ <- app.measurementsRepository.record(
+        _ <- app.measurementApplicationService.record(
           MeasurementFixtures.exampleNetworkUtilizationMeasurement
         )
-        aggregationSchedule <- app.aggregationScheduler.schedule
-        _ <- aggregationSchedule.work.run
 
         // when
         result <- httpApp.run(request)

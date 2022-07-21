@@ -12,6 +12,11 @@ object Arbitraries {
   given genArbitrary[A](using Gen[A]): Arbitrary[A] =
     Arbitrary[A].apply(summon[Gen[A]])
 
+  def sample[A](using Gen[A]): () => A = {
+    val provider = LazyList.continually(summon[Gen[A]].sample).take(100).flatten
+    () => provider.head
+  }
+
   ///////////////////////
 
   given Gen[Instant] = Gen.calendar.map(_.toInstant)

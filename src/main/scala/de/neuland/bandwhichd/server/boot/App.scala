@@ -3,7 +3,6 @@ package de.neuland.bandwhichd.server.boot
 import cats.effect.*
 import cats.effect.kernel.Outcome
 import cats.implicits.*
-import de.neuland.bandwhichd.server.adapter.in.scheduler.AggregationScheduler
 import de.neuland.bandwhichd.server.adapter.in.v1.health.HealthController
 import de.neuland.bandwhichd.server.adapter.in.v1.message.MessageController
 import de.neuland.bandwhichd.server.adapter.in.v1.stats.StatsController
@@ -17,11 +16,6 @@ import de.neuland.bandwhichd.server.application.{
 import de.neuland.bandwhichd.server.domain.measurement.MeasurementsRepository
 import de.neuland.bandwhichd.server.domain.stats.StatsRepository
 import de.neuland.bandwhichd.server.lib.cassandra.CassandraContext
-import de.neuland.bandwhichd.server.lib.scheduling.{
-  Operator,
-  Scheduler,
-  SchedulersOperator
-}
 import de.neuland.bandwhichd.server.lib.time.cats.TimeContext
 import org.http4s.dsl.io.*
 import org.http4s.ember.server.EmberServerBuilder
@@ -53,27 +47,14 @@ open class App[F[_]: Async](
   // application
   lazy val measurementApplicationService: MeasurementApplicationService[F] =
     MeasurementApplicationService[F](
-      measurementsRepository = measurementsRepository
+      measurementsRepository = measurementsRepository,
+      statsRepository = statsRepository,
+      timeContext = timeContext
     )
 
   lazy val statsApplicationService: StatsApplicationService[F] =
     StatsApplicationService[F](
-      timeContext = timeContext,
-      measurementsRepository = measurementsRepository,
       statsRepository = statsRepository
-    )
-
-  // in scheduling
-  lazy val aggregationScheduler: Scheduler[F] =
-    AggregationScheduler[F](
-      configuration = configuration,
-      statsApplicationService = statsApplicationService
-    )
-
-  // scheduling
-  lazy val schedulersOperator: SchedulersOperator[F] =
-    SchedulersOperator[F](
-      aggregationScheduler
     )
 
   // in http
@@ -102,9 +83,9 @@ open class App[F[_]: Async](
     routes.routes.orNotFound
 }
 
-object App extends IOApp {
-  override def run(args: List[String]): IO[ExitCode] = {
-    val outcomeR = for {
+object App extends IOApp.Simple {
+  override def run: IO[Unit] =
+    (for {
       configuration <- Configuration.resource[IO]
       cassandraContext <- CassandraContext.resource[IO](configuration)
       _ <- Resource.eval(
@@ -115,35 +96,19 @@ object App extends IOApp {
         cassandraContext,
         configuration
       )
-      schedulerOutcomeF <- main.schedulersOperator.resource
       server <- EmberServerBuilder
         .default[IO]
         .withHostOption(None)
         .withHttpApp(main.httpApp)
         .build
-      logger <- Resource.eval(Slf4jLogger.create[IO])
-      _ <- Resource.eval(
-        logger.info(
-          s"bandwhichd-server startup complete - ${main.schedulersOperator.size} scheduler - listening on ${server.address}"
-        )
-      )
-      lineF <- Resource.eval(IO.delay {
-        for {
-          line <- IO.interruptible {
-            StdIn.readLine()
-          }
-          _ <- if (line == null) IO.never else IO.unit
-        } yield ()
-      })
-    } yield schedulerOutcomeF.race(lineF)
-
-    outcomeR.use { outcomeF =>
+    } yield server).use { server =>
       for {
-        outcome <- outcomeF
-      } yield outcome match
-        case Right(_)                   => ExitCode.Success
-        case Left(Outcome.Succeeded(_)) => ExitCode.Success
-        case _                          => ExitCode.Error
+        logger <- Slf4jLogger.create[IO]
+        _ <- logger.info(
+          s"bandwhichd-server startup complete - listening on ${server.address}"
+        )
+        line <- IO.interruptible { StdIn.readLine() }
+        _ <- if (line == null) IO.never else IO.unit
+      } yield ()
     }
-  }
 }

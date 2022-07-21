@@ -12,11 +12,10 @@ LABEL org.opencontainers.image.vendor="neuland – Büro für Informatik GmbH"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 LABEL org.opencontainers.image.title="bandwhichd-server"
 LABEL org.opencontainers.image.description="bandwhichd server collecting measurements and calculating statistics"
-LABEL org.opencontainers.image.version="0.6.0-rc3"
+LABEL org.opencontainers.image.version="0.6.0-rc4"
 USER guest
 ENTRYPOINT ["/opt/java/openjdk/bin/java"]
 CMD ["-jar", "/opt/bandwhichd-server.jar"]
 EXPOSE 8080
-HEALTHCHECK --interval=5s --timeout=1s --start-period=2s --retries=2 \
-    CMD wget --spider http://localhost:8080/v1/health || exit 1
-COPY --from=build --chown=root:root /tmp/bandwhichd-server/target/scala-3.1.3/bandwhichd-server-assembly-0.6.0-rc3.jar /opt/bandwhichd-server.jar
+STOPSIGNAL SIGTERM
+COPY --from=build --chown=root:root /tmp/bandwhichd-server/target/scala-3.1.3/bandwhichd-server-assembly-0.6.0-rc4.jar /opt/bandwhichd-server.jar

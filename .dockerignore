@@ -1,5 +1,5 @@
 **/*
 !project/build.properties
 !project/plugins.sbt
-!src/
+!src/main/
 !build.sbt

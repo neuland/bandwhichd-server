@@ -1,29 +1,25 @@
 package de.neuland.bandwhichd.server.adapter.in.v1.message
 
-import io.circe.Encoder
 import cats.data.Validated.{Invalid, Valid}
 import cats.data.ValidatedNel
 import cats.effect.{Concurrent, Resource}
 import cats.implicits.*
 import de.neuland.bandwhichd.server.adapter.in.v1.message.Message.MeasurementMessage
-import de.neuland.bandwhichd.server.application.{
-  MeasurementApplicationService,
-  RecordMeasurementCommand
-}
+import de.neuland.bandwhichd.server.application.MeasurementApplicationService
 import de.neuland.bandwhichd.server.boot.Configuration
 import de.neuland.bandwhichd.server.domain.measurement.Timing
 import de.neuland.bandwhichd.server.domain.stats.Stats
 import de.neuland.bandwhichd.server.lib.http4s.Helpers
 import de.neuland.bandwhichd.server.lib.time.Interval
 import de.neuland.bandwhichd.server.lib.time.cats.TimeContext
-import io.circe.{Decoder, Json}
+import io.circe.{Decoder, Encoder, Json}
 import org.http4s.dsl.{io as _, *}
 import org.http4s.headers.Allow
 import org.http4s.implicits.*
 import org.http4s.{Message as _, *}
 
-import java.time.{Instant, OffsetDateTime}
 import java.time.format.DateTimeFormatter
+import java.time.{Instant, OffsetDateTime}
 
 class MessageController[F[_]: Concurrent](
     private val configuration: Configuration,
@@ -93,9 +89,7 @@ class MessageController[F[_]: Concurrent](
           _ <- {
             message match
               case Message.MeasurementMessage(measurement) =>
-                measurementApplicationService.recordMeasurement(
-                  RecordMeasurementCommand(measurement)
-                )
+                measurementApplicationService.record(measurement)
           }
           response <- Ok("")
         } yield response
@@ -125,5 +119,10 @@ class MessageController[F[_]: Concurrent](
             )
           )
         )
-      case (None, None) => Stats.defaultTimeframe(timeContext)
+      case (None, None) =>
+        for {
+          now <- timeContext.now
+        } yield Timing.Timeframe(
+          Interval(now.minus(Stats.defaultTimeframeDuration), now)
+        )
 }

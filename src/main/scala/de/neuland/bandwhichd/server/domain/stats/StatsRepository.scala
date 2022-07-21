@@ -4,4 +4,6 @@ trait StatsRepository[F[_]] {
   def safe(stats: MonitoredStats): F[Unit]
 
   def get: F[MonitoredStats]
+
+  def update(f: MonitoredStats => MonitoredStats): F[MonitoredStats]
 }

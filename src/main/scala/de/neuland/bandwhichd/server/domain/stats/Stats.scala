@@ -1,8 +1,6 @@
 package de.neuland.bandwhichd.server.domain.stats
 
-import cats.Monad
-import cats.effect.kernel.Concurrent
-import cats.implicits.*
+import cats.effect.Concurrent
 import com.comcast.ip4s.*
 import de.neuland.bandwhichd.server.domain.*
 import de.neuland.bandwhichd.server.domain.measurement.{Measurement, Timing}
@@ -51,18 +49,10 @@ class Stats[L <: HostId, H <: AnyHost[L], R <: HostId] private (
     )
 }
 
-type AnyStats = Stats[HostId, AnyHost[HostId], HostId]
 type MonitoredStats = Stats[HostId.MachineId, MonitoredHost, HostId]
 
 object Stats {
   val defaultTimeframeDuration: Duration = Duration.ofHours(2)
-
-  def defaultTimeframe[F[_]: Monad](
-      timeContext: TimeContext[F]
-  ): F[Timing.Timeframe] =
-    for {
-      now <- timeContext.now
-    } yield Timing.Timeframe(Interval(now.minus(defaultTimeframeDuration), now))
 
   val empty: MonitoredStats = new Stats(Map.empty)
 
