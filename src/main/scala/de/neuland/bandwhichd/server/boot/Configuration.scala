@@ -19,8 +19,7 @@ case class Configuration(
     measurementNetworkConfigurationTTL: Duration,
     measurementNetworkUtilizationTTL: Duration,
     recordMeasurementQueryTimeout: Duration,
-    getAllMeasurementsQueryTimeout: Duration,
-    aggregationSchedulerInterval: Duration
+    getAllMeasurementsQueryTimeout: Duration
 )
 
 object Configuration {
@@ -33,8 +32,7 @@ object Configuration {
       measurementNetworkConfigurationTTL: String,
       measurementNetworkUtilizationTTL: String,
       recordMeasurementQueryTimeout: String,
-      getAllMeasurementsQueryTimeout: String,
-      aggregationSchedulerInterval: String
+      getAllMeasurementsQueryTimeout: String
   ): F[Configuration] = {
 
     val maybeHostnameContactPoints = contactPoints
@@ -74,9 +72,7 @@ object Configuration {
       recordMeasurementQueryTimeout =
         Duration.parse(recordMeasurementQueryTimeout),
       getAllMeasurementsQueryTimeout =
-        Duration.parse(getAllMeasurementsQueryTimeout),
-      aggregationSchedulerInterval =
-        Duration.parse(aggregationSchedulerInterval)
+        Duration.parse(getAllMeasurementsQueryTimeout)
     )
   }
 
@@ -94,8 +90,7 @@ object Configuration {
       scala.util.Properties
         .envOrElse("RECORD_MEASUREMENT_QUERY_TIMEOUT", "PT2S"),
       scala.util.Properties
-        .envOrElse("GET_ALL_MEASUREMENTS_QUERY_TIMEOUT", "PT8S"),
-      scala.util.Properties.envOrElse("AGGREGATION_SCHEDULER_INTERVAL", "PT10S")
+        .envOrElse("GET_ALL_MEASUREMENTS_QUERY_TIMEOUT", "PT8S")
     )
 
   def resource[F[_]: Sync]: Resource[F, Configuration] =

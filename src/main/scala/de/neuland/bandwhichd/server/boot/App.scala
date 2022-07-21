@@ -13,9 +13,13 @@ import de.neuland.bandwhichd.server.application.{
   MeasurementApplicationService,
   StatsApplicationService
 }
-import de.neuland.bandwhichd.server.domain.measurement.MeasurementsRepository
-import de.neuland.bandwhichd.server.domain.stats.StatsRepository
+import de.neuland.bandwhichd.server.domain.measurement.{
+  MeasurementsRepository,
+  Timing
+}
+import de.neuland.bandwhichd.server.domain.stats.{Stats, StatsRepository}
 import de.neuland.bandwhichd.server.lib.cassandra.CassandraContext
+import de.neuland.bandwhichd.server.lib.time.Interval
 import de.neuland.bandwhichd.server.lib.time.cats.TimeContext
 import org.http4s.dsl.io.*
 import org.http4s.ember.server.EmberServerBuilder
@@ -25,6 +29,7 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.typelevel.log4cats.{Logger, SelfAwareStructuredLogger}
 
 import java.io.{BufferedReader, InputStreamReader}
+import java.time.Duration
 import java.util.Scanner
 import scala.io.StdIn
 
@@ -91,11 +96,32 @@ object App extends IOApp.Simple {
       _ <- Resource.eval(
         CassandraMigration(cassandraContext).migrate(configuration)
       )
-      main = App[IO](
-        TimeContext.systemTimeContext,
+      timeContext = TimeContext.systemTimeContext[IO]
+      main: App[IO] = App[IO](
+        timeContext,
         cassandraContext,
         configuration
       )
+      _ <- Resource.eval {
+        for {
+          now <- timeContext.now
+          preseedDuration = Stats.defaultTimeframeDuration.plus(
+            Duration.ofMinutes(15)
+          )
+          initialStats <- main.statsRepository.get
+          preseededStats <- main.measurementsRepository
+            .get(
+              Timing.Timeframe(
+                Interval(now.minus(preseedDuration), preseedDuration)
+              )
+            )
+            .compile
+            .fold(initialStats) { case (stats, measurement) =>
+              stats.append(measurement)
+            }
+          _ <- main.statsRepository.safe(preseededStats)
+        } yield ()
+      }
       server <- EmberServerBuilder
         .default[IO]
         .withHostOption(None)

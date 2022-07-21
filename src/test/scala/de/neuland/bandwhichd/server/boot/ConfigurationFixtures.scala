@@ -16,8 +16,7 @@ object ConfigurationFixtures {
       measurementNetworkConfigurationTTL = Duration.ofHours(2),
       measurementNetworkUtilizationTTL = Duration.ofHours(2),
       recordMeasurementQueryTimeout = Duration.ofSeconds(4),
-      getAllMeasurementsQueryTimeout = Duration.ofSeconds(8),
-      aggregationSchedulerInterval = Duration.ofSeconds(10)
+      getAllMeasurementsQueryTimeout = Duration.ofSeconds(8)
     )
 
   def testDefaults(container: CassandraContainer): Configuration =

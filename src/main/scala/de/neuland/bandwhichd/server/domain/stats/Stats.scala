@@ -56,13 +56,6 @@ object Stats {
 
   val empty: MonitoredStats = new Stats(Map.empty)
 
-  def apply[F[_]: Concurrent](
-      measurements: Stream[F, Measurement[Timing]]
-  ): F[MonitoredStats] =
-    measurements.compile.fold(Stats.empty) { case (stats, measurement) =>
-      stats.append(measurement)
-    }
-
   extension (stats: MonitoredStats) {
     def append(
         measurement: Measurement[Timing]
