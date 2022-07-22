@@ -29,14 +29,14 @@ object Message {
         case MeasurementMessage(nc: Measurement.NetworkConfiguration) =>
           Json.obj(
             "type" -> Json.fromString(
-              "bandwhichd/measurement/network-configuration/v1"
+              "bandwhichd/measurement/agent-network-configuration/v1"
             ),
             "content" -> Encoder[Measurement.NetworkConfiguration].apply(nc)
           )
         case MeasurementMessage(nu: Measurement.NetworkUtilization) =>
           Json.obj(
             "type" -> Json.fromString(
-              "bandwhichd/measurement/network-utilization/v1"
+              "bandwhichd/measurement/agent-network-utilization/v1"
             ),
             "content" -> Encoder[Measurement.NetworkUtilization].apply(nu)
           )
@@ -46,10 +46,10 @@ object Message {
       for {
         `type` <- c.get[String]("type")
         message <- `type` match
-          case "bandwhichd/measurement/network-configuration/v1" =>
+          case "bandwhichd/measurement/agent-network-configuration/v1" =>
             c.get[Measurement.NetworkConfiguration]("content")
               .map(MeasurementMessage.apply)
-          case "bandwhichd/measurement/network-utilization/v1" =>
+          case "bandwhichd/measurement/agent-network-utilization/v1" =>
             c.get[Measurement.NetworkUtilization]("content")
               .map(MeasurementMessage.apply)
           case _ =>
@@ -57,18 +57,16 @@ object Message {
       } yield message
 
   given Codec[Measurement.NetworkConfiguration] =
-    Codec.forProduct6(
-      "agent_id",
-      "timestamp",
+    Codec.forProduct5(
       "machine_id",
+      "timestamp",
       "hostname",
       "interfaces",
       "open_sockets"
     )(Measurement.NetworkConfiguration.apply)(nc =>
       (
-        nc.agentId,
-        nc.timing,
         nc.machineId,
+        nc.timing,
         nc.hostname,
         nc.interfaces,
         nc.openSockets
@@ -77,12 +75,12 @@ object Message {
 
   given Codec[Measurement.NetworkUtilization] =
     Codec.forProduct3(
-      "agent_id",
+      "machine_id",
       "timeframe",
       "connections"
     )(Measurement.NetworkUtilization.apply)(nu =>
       (
-        nu.agentId,
+        nu.machineId,
         nu.timing,
         nu.connections
       )
@@ -153,8 +151,6 @@ object Message {
     Decoder[A].map(Sent.apply)
   ///////////////////////
 
-  given Encoder[AgentId] = Encoder[UUID].contramap(_.value)
-  given Decoder[AgentId] = Decoder[UUID].map(AgentId.apply)
   given Encoder[BytesCount] = Encoder[String].contramap(_.value.toString)
   given Decoder[BytesCount] = Decoder[BigInt].map(BytesCount.apply)
   given Encoder[InterfaceName] = Encoder[String].contramap(_.value)

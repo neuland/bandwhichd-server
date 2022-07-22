@@ -43,7 +43,6 @@ object Arbitraries {
 
   ///////////////////////
 
-  given Gen[AgentId] = Gen.uuid.map(AgentId.apply)
   given Gen[BytesCount] = Gen.long.map(BigInt.apply).map(BytesCount.apply)
   given Gen[InterfaceName] = Gen
     .oneOf("enp0s31f6", "lo", "virbr0", "tun0", "wlp3s0")
@@ -105,18 +104,16 @@ object Arbitraries {
   )
 
   given Gen[Measurement.NetworkConfiguration] = for {
-    agentId <- summon[Gen[AgentId]]
-    timestamp <- summon[Gen[Timing.Timestamp]]
     machineId <- summon[Gen[MachineId]]
+    timestamp <- summon[Gen[Timing.Timestamp]]
     hostname <- Ip4sArbitraries.hostnameGenerator
     numberOfInterfaces <- Gen.chooseNum(1, 4)
     interfaces <- Gen.listOfN(numberOfInterfaces, summon[Gen[Interface]])
     numberOfOpenSockets <- Gen.chooseNum(1, 7)
     openSockets <- Gen.listOfN(numberOfOpenSockets, summon[Gen[OpenSocket]])
   } yield Measurement.NetworkConfiguration(
-    agentId = agentId,
-    timing = timestamp,
     machineId = machineId,
+    timing = timestamp,
     hostname = hostname,
     interfaces = interfaces,
     openSockets = openSockets
@@ -139,7 +136,7 @@ object Arbitraries {
   )
 
   given Gen[Measurement.NetworkUtilization] = for {
-    agentId <- summon[Gen[AgentId]]
+    machineId <- summon[Gen[MachineId]]
     timeframe <- timeframe(
       Duration.ofSeconds(10),
       Duration.ofSeconds(10).plusMillis(5)
@@ -147,7 +144,7 @@ object Arbitraries {
     numberOfConnections <- Gen.chooseNum(0, 20)
     connections <- Gen.listOfN(numberOfConnections, summon[Gen[Connection]])
   } yield Measurement.NetworkUtilization(
-    agentId = agentId,
+    machineId = machineId,
     timing = timeframe,
     connections = connections
   )

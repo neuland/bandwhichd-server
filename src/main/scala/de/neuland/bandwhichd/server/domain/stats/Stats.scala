@@ -62,9 +62,8 @@ object Stats {
     ): MonitoredStats =
       measurement match
         case Measurement.NetworkConfiguration(
-              agentId,
-              timing,
               machineId,
+              timing,
               hostname,
               interfaces,
               _
@@ -76,9 +75,6 @@ object Stats {
             stats.bundles
               .get(hostId)
               .orElse {
-                stats.bundles.values.find(_.host.agentIds.contains(agentId))
-              }
-              .orElse {
                 stats.bundles.values.find(_.host.hostnames.contains(hostname))
               }
 
@@ -87,7 +83,6 @@ object Stats {
             Stats.Bundle(
               host = MonitoredHost(
                 hostId = hostId,
-                agentIds = Set(agentId),
                 hostname = hostname,
                 additionalHostnames = Set.empty,
                 interfaces = interfaces.toSet
@@ -99,7 +94,6 @@ object Stats {
             bundle.copy(
               host = MonitoredHost(
                 hostId = hostId,
-                agentIds = bundle.host.agentIds + agentId,
                 hostname = hostname,
                 additionalHostnames = bundle.host.hostnames - hostname,
                 interfaces = bundle.host.interfaces ++ interfaces
@@ -111,12 +105,14 @@ object Stats {
           new Stats(stats.bundles + (hostId -> bundle))
 
         case Measurement.NetworkUtilization(
-              agentId,
+              machineId,
               timing,
               connections
             ) =>
-          stats.bundles.values
-            .find(_.host.agentIds.contains(agentId))
+          val hostId: HostId.MachineId = HostId(machineId)
+
+          stats.bundles
+            .get(hostId)
             .fold(stats) { bundle =>
               new Stats(
                 stats.bundles + (bundle.host.hostId -> bundle.copy(

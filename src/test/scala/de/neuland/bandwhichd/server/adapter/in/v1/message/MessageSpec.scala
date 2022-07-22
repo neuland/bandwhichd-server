@@ -8,7 +8,7 @@ import org.scalatest.wordspec.AnyWordSpec
 
 class MessageSpec extends AnyWordSpec with Matchers {
   "Message" should {
-    "be parse-able from API version 1 JSON for bandwhichd/measurement/network-configuration/v1" in {
+    "be parse-able from API version 1 JSON for bandwhichd/measurement/agent-network-configuration/v1" in {
       // given
       val json =
         ApiV1MessageV1Fixtures.exampleNetworkConfigurationMeasurementJson
@@ -24,7 +24,7 @@ class MessageSpec extends AnyWordSpec with Matchers {
       )
     }
 
-    "be parse-able from API version 1 JSON for bandwhichd/measurement/network-utilization/v1" in {
+    "be parse-able from API version 1 JSON for bandwhichd/measurement/agent-network-utilization/v1" in {
       // given
       val json = ApiV1MessageV1Fixtures.exampleNetworkUtilizationMeasurementJson
 
@@ -39,7 +39,7 @@ class MessageSpec extends AnyWordSpec with Matchers {
       )
     }
 
-    "be writable if type is bandwhichd/measurement/network-configuration/v1" in {
+    "be writable if type is bandwhichd/measurement/agent-network-configuration/v1" in {
       // given
       val message = Message.MeasurementMessage(
         measurement = MeasurementFixtures.exampleNetworkConfigurationMeasurement
@@ -52,7 +52,7 @@ class MessageSpec extends AnyWordSpec with Matchers {
       result shouldBe ApiV1MessageV1Fixtures.exampleNetworkConfigurationMeasurementJsonNoSpaces
     }
 
-    "be writable if type is bandwhichd/measurement/network-utilization/v1" in {
+    "be writable if type is bandwhichd/measurement/agent-network-utilization/v1" in {
       // given
       val message = Message.MeasurementMessage(
         measurement = MeasurementFixtures.exampleNetworkUtilizationMeasurement

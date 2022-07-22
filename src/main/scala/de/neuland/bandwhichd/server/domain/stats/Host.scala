@@ -45,7 +45,6 @@ object MachineIdHost {
 
 case class MonitoredHost(
     hostId: HostId.MachineId,
-    agentIds: Set[AgentId],
     hostname: Hostname,
     additionalHostnames: Set[Hostname],
     interfaces: Set[Interface]

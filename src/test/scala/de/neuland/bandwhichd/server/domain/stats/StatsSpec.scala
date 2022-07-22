@@ -37,7 +37,6 @@ class StatsSpec
           result.hosts should contain(
             MonitoredHost(
               hostId = HostId(nc.machineId),
-              agentIds = Set(nc.agentId),
               hostname = nc.hostname,
               additionalHostnames = Set.empty,
               interfaces = nc.interfaces.toSet
@@ -67,13 +66,11 @@ class StatsSpec
       // given
       val measurements: Seq[Measurement[Timing]] = Seq(
         Measurement.NetworkConfiguration(
-          agentId =
-            AgentId(UUID.fromString("0b7f7d58-3c5c-4f92-9ada-4c27ab19b195")),
+          machineId =
+            MachineId(UUID.fromString("a814d0d9-3dca-4acf-985f-442dd4262228")),
           timing = Timing.Timestamp(
             ZonedDateTime.parse("2022-05-18T18:09:50.34957395Z")
           ),
-          machineId =
-            MachineId(UUID.fromString("a814d0d9-3dca-4acf-985f-442dd4262228")),
           hostname = Hostname.fromString("some-host.example.com").get,
           interfaces = Seq.empty,
           openSockets = Seq.empty
@@ -105,25 +102,21 @@ class StatsSpec
       // given
       val measurements: Seq[Measurement[Timing]] = Seq(
         Measurement.NetworkConfiguration(
-          agentId =
-            AgentId(UUID.fromString("a814d0d9-3dca-4acf-985f-442dd4262228")),
+          machineId =
+            MachineId(UUID.fromString("0b7f7d58-3c5c-4f92-9ada-4c27ab19b195")),
           timing = Timing.Timestamp(
             ZonedDateTime.parse("2022-05-18T18:09:50.34957395Z")
           ),
-          machineId =
-            MachineId(UUID.fromString("0b7f7d58-3c5c-4f92-9ada-4c27ab19b195")),
           hostname = Hostname.fromString("some-host.example.com").get,
           interfaces = Seq.empty,
           openSockets = Seq.empty
         ),
         Measurement.NetworkConfiguration(
-          agentId =
-            AgentId(UUID.fromString("a814d0d9-3dca-4acf-985f-442dd4262228")),
+          machineId =
+            MachineId(UUID.fromString("0c8cb005-a78b-49c5-8760-48daf08ea86f")),
           timing = Timing.Timestamp(
             ZonedDateTime.parse("2022-05-18T18:09:50.34957395Z")
           ),
-          machineId =
-            MachineId(UUID.fromString("0c8cb005-a78b-49c5-8760-48daf08ea86f")),
           hostname = Hostname.fromString("some-host.example.com").get,
           interfaces = Seq.empty,
           openSockets = Seq.empty
@@ -149,25 +142,21 @@ class StatsSpec
       // given
       val measurements: Seq[Measurement[Timing]] = Seq(
         Measurement.NetworkConfiguration(
-          agentId =
-            AgentId(UUID.fromString("0b7f7d58-3c5c-4f92-9ada-4c27ab19b195")),
+          machineId =
+            MachineId(UUID.fromString("a814d0d9-3dca-4acf-985f-442dd4262228")),
           timing = Timing.Timestamp(
             ZonedDateTime.parse("2022-05-18T18:10:50.34957395Z")
           ),
-          machineId =
-            MachineId(UUID.fromString("a814d0d9-3dca-4acf-985f-442dd4262228")),
           hostname = Hostname.fromString("another-host.example.com").get,
           interfaces = Seq.empty,
           openSockets = Seq.empty
         ),
         Measurement.NetworkConfiguration(
-          agentId =
-            AgentId(UUID.fromString("0b7f7d58-3c5c-4f92-9ada-4c27ab19b195")),
+          machineId =
+            MachineId(UUID.fromString("a814d0d9-3dca-4acf-985f-442dd4262228")),
           timing = Timing.Timestamp(
             ZonedDateTime.parse("2022-05-18T18:09:50.34957395Z")
           ),
-          machineId =
-            MachineId(UUID.fromString("a814d0d9-3dca-4acf-985f-442dd4262228")),
           hostname = Hostname.fromString("some-host.example.com").get,
           interfaces = Seq.empty,
           openSockets = Seq.empty
@@ -202,14 +191,10 @@ class StatsSpec
     "built from a network configuration and network utilization" should {
 
       // given
-      val agentId1 =
-        AgentId(UUID.fromString("4f705b72-8889-4dfd-9720-9b8a8d0f8f24"))
       val machineId1 =
         MachineId(UUID.fromString("8cf801f1-5592-49ce-a5e3-256648dfd7ea"))
       val hostId1 = HostId(machineId1)
       val hostname1 = Hostname.fromString("some-host.example.com").get
-      val agentId2 =
-        AgentId(UUID.fromString("c826b822-69b4-4dcc-844f-e1c604a8b724"))
       val machineId2 =
         MachineId(UUID.fromString("a54adaa9-2e35-4881-bc87-4e53d29d68ff"))
       val hostId2 = HostId(machineId2)
@@ -240,9 +225,8 @@ class StatsSpec
 
       val measurements: Seq[Measurement[Timing]] = Seq(
         Measurement.NetworkConfiguration(
-          agentId = agentId1,
-          timing = start1,
           machineId = machineId1,
+          timing = start1,
           hostname = hostname1,
           interfaces = Seq(
             Interface(
@@ -262,9 +246,8 @@ class StatsSpec
           )
         ),
         Measurement.NetworkConfiguration(
-          agentId = agentId2,
-          timing = start2,
           machineId = machineId2,
+          timing = start2,
           hostname = hostname2,
           interfaces = Seq(
             Interface(
@@ -278,7 +261,7 @@ class StatsSpec
           openSockets = Seq.empty
         ),
         Measurement.NetworkUtilization(
-          agentId = agentId1,
+          machineId = machineId1,
           timing = timeframe1a,
           connections = Seq(
             Connection(
@@ -294,7 +277,7 @@ class StatsSpec
           )
         ),
         Measurement.NetworkUtilization(
-          agentId = agentId1,
+          machineId = machineId1,
           timing = timeframe1b,
           connections = Seq(
             Connection(
@@ -320,12 +303,12 @@ class StatsSpec
           )
         ),
         Measurement.NetworkUtilization(
-          agentId = agentId2,
+          machineId = machineId2,
           timing = timeframe2a,
           connections = Seq.empty
         ),
         Measurement.NetworkUtilization(
-          agentId = agentId2,
+          machineId = machineId2,
           timing = timeframe2b,
           connections = Seq.empty
         )
@@ -411,7 +394,7 @@ class StatsSpec
       "keep host with utilization update timeframe ending after drop" in {
         // given
         val ncTemplate = ncGen()
-        val nuTemplate = nuGen().copy(agentId = ncTemplate.agentId)
+        val nuTemplate = nuGen().copy(machineId = ncTemplate.machineId)
 
         val baseTiming = ncTemplate.timestamp.instant
 
@@ -443,7 +426,7 @@ class StatsSpec
         val host3 = host"host3"
 
         val ncTemplate = ncGen()
-        val nuTemplate = nuGen().copy(agentId = ncTemplate.agentId)
+        val nuTemplate = nuGen().copy(machineId = ncTemplate.machineId)
         val con1 = conGen().copy(
           remoteSocket = Remote(SocketAddress(host1, port"8080"))
         )

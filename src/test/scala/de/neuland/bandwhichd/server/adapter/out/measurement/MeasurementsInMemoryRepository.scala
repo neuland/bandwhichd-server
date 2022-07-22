@@ -38,13 +38,13 @@ private object MeasurementsInMemoryRepository {
     case NetworkConfiguration, NetworkUtilization
   }
 
-  type ByDateKey = (Timing.Timestamp, AgentId, MeasurementType)
+  type ByDateKey = (Timing.Timestamp, MachineId, MeasurementType)
 
   extension (measurement: Measurement[Timing]) {
     def byDateKey: ByDateKey =
       (
         measurement.timestamp,
-        measurement.agentId,
+        measurement.machineId,
         measurement.`type`
       )
 

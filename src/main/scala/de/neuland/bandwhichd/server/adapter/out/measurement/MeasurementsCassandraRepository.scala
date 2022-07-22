@@ -8,7 +8,7 @@ import com.datastax.oss.driver.api.core.cql.{SimpleStatement, Statement}
 import de.neuland.bandwhichd.server.adapter.out.measurement.MeasurementCassandraCodecs.given
 import de.neuland.bandwhichd.server.boot.Configuration
 import de.neuland.bandwhichd.server.domain.measurement.*
-import de.neuland.bandwhichd.server.domain.{AgentId, Interface, MachineId}
+import de.neuland.bandwhichd.server.domain.{Interface, MachineId}
 import de.neuland.bandwhichd.server.lib.cassandra.CassandraContext
 import de.neuland.bandwhichd.server.lib.time.Interval
 import fs2.Stream

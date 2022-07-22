@@ -1,7 +1,7 @@
 {
-  "type": "bandwhichd/measurement/network-utilization/v1",
+  "type": "bandwhichd/measurement/agent-network-utilization/v1",
   "content": {
-    "agent_id": "d254aebd-e092-4ced-b698-0448a46eaf7d",
+    "machine_id": "c414c2da-714c-4b68-b97e-3f31e18053d2",
     "timeframe": "2022-05-06T15:14:51.942Z/PT10.001S",
     "connections": [
       {

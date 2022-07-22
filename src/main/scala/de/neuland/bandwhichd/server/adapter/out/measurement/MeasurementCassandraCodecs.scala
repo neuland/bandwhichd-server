@@ -8,22 +8,21 @@ import de.neuland.bandwhichd.server.domain.measurement.*
 import de.neuland.bandwhichd.server.lib.time.Interval
 import io.circe.*
 
+import java.time.*
 import java.time.ZoneOffset.UTC
 import java.time.format.DateTimeFormatter.ISO_DATE_TIME
 import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
-import java.time.*
 import java.util.UUID
 import scala.util.Try
 
 object MeasurementCassandraCodecs {
   given Codec[Measurement[Timing]] =
-    Codec.forProduct10(
+    Codec.forProduct9(
       "date",
       "timestamp",
       "end_timestamp",
-      "agent_id",
+      "machine_id",
       "measurement_type",
-      "network_configuration_machine_id",
       "network_configuration_hostname",
       "network_configuration_interfaces",
       "network_configuration_open_sockets",
@@ -33,9 +32,8 @@ object MeasurementCassandraCodecs {
           _: String,
           timestamp: Timing.Timestamp,
           endTimestamp: Timing.Timestamp,
-          agentId: AgentId,
+          machineId: MachineId,
           measurementType: String,
-          machinedId: MachineId,
           hostname: Hostname,
           interfaces: Seq[Interface],
           openSockets: Seq[OpenSocket],
@@ -44,16 +42,15 @@ object MeasurementCassandraCodecs {
         measurementType match
           case "network_configuration" =>
             Measurement.NetworkConfiguration(
-              agentId = agentId,
+              machineId = machineId,
               timing = timestamp,
-              machineId = machinedId,
               hostname = hostname,
               interfaces = interfaces,
               openSockets = openSockets
             )
           case "network_utilization" =>
             Measurement.NetworkUtilization(
-              agentId = agentId,
+              machineId = machineId,
               timing = Timing.Timeframe(
                 Interval(
                   start = timestamp.instant,
@@ -69,9 +66,8 @@ object MeasurementCassandraCodecs {
             )
     )(_ match
       case Measurement.NetworkConfiguration(
-            agentId,
-            timing,
             machineId,
+            timing,
             hostname,
             interfaces,
             openSockets
@@ -80,16 +76,15 @@ object MeasurementCassandraCodecs {
           LocalDate.ofInstant(timing.value, UTC).toString,
           timing,
           Timing.Timestamp(Instant.EPOCH),
-          agentId,
-          "network_configuration",
           machineId,
+          "network_configuration",
           hostname,
           interfaces,
           openSockets,
           Seq.empty[Connection]
         )
       case Measurement.NetworkUtilization(
-            agentId,
+            machineId,
             timing,
             connections
           ) =>
@@ -97,9 +92,8 @@ object MeasurementCassandraCodecs {
           LocalDate.ofInstant(timing.value.normalizedStart, UTC).toString,
           Timing.Timestamp(timing.value.normalizedStart),
           Timing.Timestamp(timing.value.normalizedStop),
-          agentId,
+          machineId,
           "network_utilization",
-          MachineId(new UUID(0, 0)),
           Hostname.fromString("a").get,
           Seq.empty[Interface],
           Seq.empty[OpenSocket],
@@ -182,8 +176,6 @@ object MeasurementCassandraCodecs {
 
   ///////////////////////
 
-  given Encoder[AgentId] = Encoder[UUID].contramap(_.value)
-  given Decoder[AgentId] = Decoder[UUID].map(AgentId.apply)
   given Encoder[BytesCount] = Encoder[BigInt].contramap(_.value)
   given Decoder[BytesCount] = Decoder[BigInt].map(BytesCount.apply)
   given Encoder[InterfaceName] = Encoder[String].contramap(_.value)
