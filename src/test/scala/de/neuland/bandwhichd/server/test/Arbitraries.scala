@@ -6,7 +6,8 @@ import de.neuland.bandwhichd.server.domain.measurement.*
 import de.neuland.bandwhichd.server.lib.time.Interval
 import org.scalacheck.{Arbitrary, Gen}
 
-import java.time.{Duration, Instant}
+import java.time.ZoneOffset.UTC
+import java.time.{Duration, Instant, LocalDate, ZoneOffset}
 
 object Arbitraries {
   given genArbitrary[A](using Gen[A]): Arbitrary[A] =
@@ -37,9 +38,9 @@ object Arbitraries {
 
   def interval(min: Duration, max: Duration): Gen[Interval] =
     for {
-      start <- summon[Gen[Instant]]
+      start <- summon[Gen[Timing.Timestamp]]
       durationInMilliseconds <- Gen.choose(min.toMillis, max.toMillis)
-    } yield Interval(start, Duration.ofMillis(durationInMilliseconds))
+    } yield Interval(start.instant, Duration.ofMillis(durationInMilliseconds))
 
   ///////////////////////
 
@@ -69,7 +70,18 @@ object Arbitraries {
   ///////////////////////
 
   given Gen[Timing.Timestamp] =
-    Gen.calendar.map(_.toInstant).map(Timing.Timestamp.apply)
+    for {
+      epochSecond <- Gen.choose(
+        LocalDate
+          .of(1950, 1, 1)
+          .atStartOfDay(UTC)
+          .toEpochSecond,
+        LocalDate
+          .of(2149, 12, 1)
+          .atStartOfDay(UTC)
+          .toEpochSecond
+      )
+    } yield Timing.Timestamp(Instant.ofEpochSecond(epochSecond))
   def timeframe(min: Duration, max: Duration): Gen[Timing.Timeframe] =
     interval(min, max).map(Timing.Timeframe.apply)
 

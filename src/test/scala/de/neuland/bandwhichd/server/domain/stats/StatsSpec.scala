@@ -340,8 +340,8 @@ class StatsSpec
     "dropping" should {
       "not keep host without update after drop" in {
         // given
-        val ncTemplate = ncGen()
-        val nuTemplate = nuGen()
+        val ncTemplate = MeasurementFixtures.ncGen()
+        val nuTemplate = MeasurementFixtures.nuGen()
 
         val baseTiming = ncTemplate.timestamp.instant
 
@@ -368,7 +368,7 @@ class StatsSpec
 
       "keep host with configuration update after drop" in {
         // given
-        val ncTemplate = ncGen()
+        val ncTemplate = MeasurementFixtures.ncGen()
 
         val baseTiming = ncTemplate.timestamp.instant
 
@@ -393,8 +393,9 @@ class StatsSpec
 
       "keep host with utilization update timeframe ending after drop" in {
         // given
-        val ncTemplate = ncGen()
-        val nuTemplate = nuGen().copy(machineId = ncTemplate.machineId)
+        val ncTemplate = MeasurementFixtures.ncGen()
+        val nuTemplate =
+          MeasurementFixtures.nuGen().copy(machineId = ncTemplate.machineId)
 
         val baseTiming = ncTemplate.timestamp.instant
 
@@ -421,60 +422,24 @@ class StatsSpec
 
       "keep only connections from utilization update after drop" in {
         // given
-        val host1 = host"host1"
-        val host2 = host"host2"
-        val host3 = host"host3"
-
-        val ncTemplate = ncGen()
-        val nuTemplate = nuGen().copy(machineId = ncTemplate.machineId)
-        val con1 = conGen().copy(
-          remoteSocket = Remote(SocketAddress(host1, port"8080"))
+        val timeframeDataset = MeasurementFixtures.TimeframeDataset.gen()
+        val stats: MonitoredStats = buildStats(
+          timeframeDataset.nc,
+          timeframeDataset.nuBefore,
+          timeframeDataset.nuAfter
         )
-        val con2 = conGen().copy(
-          remoteSocket = Remote(SocketAddress(host2, port"8080"))
-        )
-        val con3 = conGen().copy(
-          remoteSocket = Remote(SocketAddress(host3, port"8080"))
-        )
-
-        val baseTiming = ncTemplate.timestamp.instant
-
-        val nc = ncTemplate.copy(
-          timing = Timing.Timestamp(baseTiming),
-          interfaces = Seq.empty,
-          openSockets = Seq.empty
-        )
-        val nuBefore = nuTemplate.copy(
-          timing = Timing.Timeframe(
-            Interval(baseTiming, nuTemplate.timing.duration)
-          ),
-          connections = Seq(con1, con2)
-        )
-        val nuAfter = nuTemplate.copy(
-          timing = Timing.Timeframe(
-            Interval(baseTiming.plusSeconds(10), nuTemplate.timing.duration)
-          ),
-          connections = Seq(con2, con3)
-        )
-        val stats: MonitoredStats = buildStats(nc, nuBefore, nuAfter)
-        val timestamp =
-          Timing.Timestamp(baseTiming.plusSeconds(15))
 
         // when
-        val result = stats.dropBefore(timestamp)
+        val result = stats.dropBefore(timeframeDataset.cutoffTimestamp)
 
         // then
         result.connections.map(_._2) should contain theSameElementsAs Set(
-          HostId(con2.remoteSocket.value.host),
-          HostId(con3.remoteSocket.value.host)
+          HostId(timeframeDataset.con2.remoteSocket.value.host),
+          HostId(timeframeDataset.con3.remoteSocket.value.host)
         )
       }
     }
   }
-
-  private def ncGen = sample[Measurement.NetworkConfiguration]
-  private def nuGen = sample[Measurement.NetworkUtilization]
-  private def conGen = sample[Connection]
 
   private def buildStats(measurements: Measurement[Timing]*): MonitoredStats =
     measurements.foldLeft(Stats.empty) { case (stats, measurement) =>

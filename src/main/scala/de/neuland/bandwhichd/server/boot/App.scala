@@ -39,13 +39,13 @@ open class App[F[_]: Async](
     private val configuration: Configuration
 ) {
   // out
-  lazy val measurementCassandraRepository: MeasurementsCassandraRepository[F] =
+  lazy val measurementsCassandraRepository: MeasurementsCassandraRepository[F] =
     MeasurementsCassandraRepository[F](
       cassandraContext = cassandraContext,
       configuration = configuration
     )
   lazy val measurementsRepository: MeasurementsRepository[F] =
-    measurementCassandraRepository
+    measurementsCassandraRepository
   lazy val statsRepository: StatsRepository[F] =
     StatsInMemoryRepository[F]()
 
@@ -59,7 +59,9 @@ open class App[F[_]: Async](
 
   lazy val statsApplicationService: StatsApplicationService[F] =
     StatsApplicationService[F](
-      statsRepository = statsRepository
+      configuration = configuration,
+      statsRepository = statsRepository,
+      measurementsRepository = measurementsRepository
     )
 
   // in http

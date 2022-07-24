@@ -19,7 +19,8 @@ case class Configuration(
     measurementNetworkConfigurationTTL: Duration,
     measurementNetworkUtilizationTTL: Duration,
     recordMeasurementQueryTimeout: Duration,
-    getAllMeasurementsQueryTimeout: Duration
+    getAllMeasurementsQueryTimeout: Duration,
+    maximumTimespanBetweenNetworkConfigurationUpdates: Duration
 )
 
 object Configuration {
@@ -32,7 +33,8 @@ object Configuration {
       measurementNetworkConfigurationTTL: String,
       measurementNetworkUtilizationTTL: String,
       recordMeasurementQueryTimeout: String,
-      getAllMeasurementsQueryTimeout: String
+      getAllMeasurementsQueryTimeout: String,
+      maximumTimespanBetweenNetworkConfigurationUpdates: String
   ): F[Configuration] = {
 
     val maybeHostnameContactPoints = contactPoints
@@ -72,7 +74,9 @@ object Configuration {
       recordMeasurementQueryTimeout =
         Duration.parse(recordMeasurementQueryTimeout),
       getAllMeasurementsQueryTimeout =
-        Duration.parse(getAllMeasurementsQueryTimeout)
+        Duration.parse(getAllMeasurementsQueryTimeout),
+      maximumTimespanBetweenNetworkConfigurationUpdates =
+        Duration.parse(maximumTimespanBetweenNetworkConfigurationUpdates)
     )
   }
 
@@ -90,7 +94,12 @@ object Configuration {
       scala.util.Properties
         .envOrElse("RECORD_MEASUREMENT_QUERY_TIMEOUT", "PT2S"),
       scala.util.Properties
-        .envOrElse("GET_ALL_MEASUREMENTS_QUERY_TIMEOUT", "PT8S")
+        .envOrElse("GET_ALL_MEASUREMENTS_QUERY_TIMEOUT", "PT8S"),
+      scala.util.Properties
+        .envOrElse(
+          "MAXIMUM_TIMESPAN_BETWEEN_NETWORK_CONFIGURATION_UPDATES",
+          "PT15M"
+        )
     )
 
   def resource[F[_]: Sync]: Resource[F, Configuration] =

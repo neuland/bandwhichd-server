@@ -28,5 +28,7 @@ services:
       - /opt/bandwhichd-server.jar
     environment:
         CONTACT_POINTS: "cassandra:9042"
+        MEASUREMENT_NETWORK_CONFIGURATION_TTL: P1000D
+        MEASUREMENT_NETWORK_UTILIZATION_TTL: P1000D
     ports:
       - 8080:8080

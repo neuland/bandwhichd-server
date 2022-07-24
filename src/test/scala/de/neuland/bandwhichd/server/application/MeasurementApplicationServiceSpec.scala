@@ -22,23 +22,29 @@ class MeasurementApplicationServiceSpec
 
   "MeasurementApplicationService" should {
     "drop outdated and not updated data when recording messages" in {
-      val nc1 = ncGen().copy(
-        hostname = host"host1"
-      )
-      val nc2 = ncGen().copy(
-        timing = Timing.Timestamp(
-          nc1.timing.instant
-            .plus(Stats.defaultTimeframeDuration)
-        ),
-        hostname = host"host2"
-      )
-      val nc3 = ncGen().copy(
-        timing = Timing.Timestamp(
-          nc1.timing.instant
-            .plus(Stats.defaultTimeframeDuration.multipliedBy(2))
-        ),
-        hostname = host"host3"
-      )
+      val nc1 = MeasurementFixtures
+        .ncGen()
+        .copy(
+          hostname = host"host1"
+        )
+      val nc2 = MeasurementFixtures
+        .ncGen()
+        .copy(
+          timing = Timing.Timestamp(
+            nc1.timing.instant
+              .plus(Stats.defaultTimeframeDuration)
+          ),
+          hostname = host"host2"
+        )
+      val nc3 = MeasurementFixtures
+        .ncGen()
+        .copy(
+          timing = Timing.Timestamp(
+            nc1.timing.instant
+              .plus(Stats.defaultTimeframeDuration.multipliedBy(2))
+          ),
+          hostname = host"host3"
+        )
 
       val now =
         nc2.timing.instant.plus(Stats.defaultTimeframeDuration.dividedBy(2))
@@ -69,6 +75,4 @@ class MeasurementApplicationServiceSpec
       }
     }
   }
-
-  private def ncGen = sample[Measurement.NetworkConfiguration]
 }

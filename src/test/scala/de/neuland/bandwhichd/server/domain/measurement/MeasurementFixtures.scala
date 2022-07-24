@@ -3,7 +3,9 @@ package de.neuland.bandwhichd.server.domain.measurement
 import cats.data.NonEmptySeq
 import com.comcast.ip4s.*
 import de.neuland.bandwhichd.server.domain.*
+import de.neuland.bandwhichd.server.domain.stats.HostId
 import de.neuland.bandwhichd.server.lib.time.Interval
+import de.neuland.bandwhichd.server.test.Arbitraries.{sample, given}
 
 import java.time.{Duration, Instant, ZonedDateTime}
 import java.util.UUID
@@ -199,4 +201,107 @@ object MeasurementFixtures {
     )
   val fullTimeframe: Timing.Timeframe =
     Timing.Timeframe(NonEmptySeq.fromSeqUnsafe(allTimestamps))
+
+  case class TimeframeDataset(
+      host1: Host,
+      host2: Host,
+      host3: Host,
+      con1: Connection,
+      con2: Connection,
+      con3: Connection,
+      nc: Measurement.NetworkConfiguration,
+      nuBefore: Measurement.NetworkUtilization,
+      nuAfter: Measurement.NetworkUtilization,
+      cutoffTimestamp: Timing.Timestamp
+  ) {
+    def hostId0: HostId = HostId(nc.machineId)
+    def hostId1: HostId = HostId(con1.remoteSocket.value.host)
+    def hostId2: HostId = HostId(con2.remoteSocket.value.host)
+    def hostId3: HostId = HostId(con3.remoteSocket.value.host)
+
+    def measurements: Seq[Measurement[Timing]] =
+      Seq(nc, nuBefore, nuAfter)
+  }
+
+  object TimeframeDataset {
+    def gen(): TimeframeDataset = {
+      val host0 = ipv4"192.168.0.10"
+      val host1 = ipv4"192.168.0.11"
+      val host2 = ipv4"192.168.0.12"
+      val host3 = ipv4"192.168.0.13"
+
+      val nc = MeasurementFixtures
+        .ncGen()
+        .copy(
+          hostname = host"host0",
+          interfaces = Seq(
+            Interface(
+              name = InterfaceName("eth0"),
+              isUp = true,
+              networks = Seq(Cidr(host0, 24))
+            )
+          ),
+          openSockets = Seq.empty
+        )
+      val baseTiming = nc.timestamp.instant
+
+      val nuTemplate =
+        MeasurementFixtures.nuGen().copy(machineId = nc.machineId)
+
+      val con1 = MeasurementFixtures
+        .conGen()
+        .copy(
+          localSocket = Local(SocketAddress(host0, port"50101")),
+          remoteSocket = Remote(SocketAddress(host1, port"8080"))
+        )
+      val con2 = MeasurementFixtures
+        .conGen()
+        .copy(
+          localSocket = Local(SocketAddress(host0, port"50102")),
+          remoteSocket = Remote(SocketAddress(host2, port"8080"))
+        )
+      val con3 = MeasurementFixtures
+        .conGen()
+        .copy(
+          localSocket = Local(SocketAddress(host0, port"50103")),
+          remoteSocket = Remote(SocketAddress(host3, port"8080"))
+        )
+
+      val nuBefore = nuTemplate.copy(
+        timing = Timing.Timeframe(
+          Interval(baseTiming.plusMillis(4), nuTemplate.timing.duration)
+        ),
+        connections = Seq(con1, con2)
+      )
+      val nuAfter = nuTemplate.copy(
+        timing = Timing.Timeframe(
+          Interval(baseTiming.plusSeconds(10), nuTemplate.timing.duration)
+        ),
+        connections = Seq(con2, con3)
+      )
+
+      val cutoffTimestamp =
+        Timing.Timestamp(baseTiming.plusSeconds(15))
+
+      TimeframeDataset(
+        host1 = host1,
+        host2 = host2,
+        host3 = host3,
+        con1 = con1,
+        con2 = con2,
+        con3 = con3,
+        nc = nc,
+        nuBefore = nuBefore,
+        nuAfter = nuAfter,
+        cutoffTimestamp = cutoffTimestamp
+      )
+    }
+  }
+
+  def ncGen: () => Measurement.NetworkConfiguration =
+    sample[Measurement.NetworkConfiguration]
+  def nuGen: () => Measurement.NetworkUtilization =
+    sample[Measurement.NetworkUtilization]
+  def conGen: () => Connection =
+    sample[Connection]
 }

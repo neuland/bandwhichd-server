@@ -12,10 +12,10 @@ LABEL org.opencontainers.image.vendor="neuland – Büro für Informatik GmbH"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 LABEL org.opencontainers.image.title="bandwhichd-server"
 LABEL org.opencontainers.image.description="bandwhichd server collecting measurements and calculating statistics"
-LABEL org.opencontainers.image.version="0.6.0-rc6"
+LABEL org.opencontainers.image.version="0.6.0-rc7"
 USER guest
 ENTRYPOINT ["/opt/java/openjdk/bin/java"]
 CMD ["-jar", "/opt/bandwhichd-server.jar"]
 EXPOSE 8080
 STOPSIGNAL SIGTERM
-COPY --from=build --chown=root:root /tmp/bandwhichd-server/target/scala-3.1.3/bandwhichd-server-assembly-0.6.0-rc6.jar /opt/bandwhichd-server.jar
+COPY --from=build --chown=root:root /tmp/bandwhichd-server/target/scala-3.1.3/bandwhichd-server-assembly-0.6.0-rc7.jar /opt/bandwhichd-server.jar

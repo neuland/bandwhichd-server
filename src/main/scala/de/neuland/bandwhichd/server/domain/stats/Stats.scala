@@ -79,7 +79,6 @@ object Stats {
               }
 
           val bundle = maybeBundle.fold {
-            // TODO: Remotes of other hosts?
             Stats.Bundle(
               host = MonitoredHost(
                 hostId = hostId,
@@ -157,7 +156,8 @@ object Stats {
         .flatMap(_.interfaces)
         .flatMap(_.networks)
 
-    def withoutHostsOutsideOfMonitoredNetworks: MonitoredStats =
+    def withoutHostsOutsideOfMonitoredNetworks: MonitoredStats = {
+      val monitoredNetworks = stats.monitoredNetworks
       new Stats(
         stats.bundles.view.mapValues { bundle =>
           bundle.copy(
@@ -165,12 +165,13 @@ object Stats {
               _._1 match
                 case _: HostId.MachineId => true
                 case HostId.Host(ipAddress: IpAddress) =>
-                  stats.monitoredNetworks.exists(_.contains(ipAddress))
+                  monitoredNetworks.exists(_.contains(ipAddress))
                 case _ => false
             }
           )
         }.toMap
       )
+    }
 
     def unidentifiedRemoteHosts: Set[UnidentifiedHost] =
       stats.bundles.values.flatMap { bundle =>

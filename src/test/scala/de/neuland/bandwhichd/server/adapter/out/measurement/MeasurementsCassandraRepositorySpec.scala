@@ -35,7 +35,7 @@ class MeasurementsCassandraRepositorySpec
   private def configuration: Configuration =
     ConfigurationFixtures.testDefaults(container)
 
-  "MeasurementCassandraRepository" should {
+  "MeasurementsCassandraRepository" should {
     "record and get measurements" taggedAs Slow in {
       CassandraContext.resource[IO](configuration).use { cassandraContext =>
 
