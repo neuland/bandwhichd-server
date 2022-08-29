@@ -299,7 +299,16 @@ class BandwhichdServerApiV1Spec
           "hosts" -> obj(
             "c414c2da-714c-4b68-b97e-3f31e18053d2" -> obj(
               "hostname" -> fromString("some-host.example.com"),
-              "additional_hostnames" -> arr()
+              "additional_hostnames" -> arr(),
+              "connections" -> obj(
+                "c414c2da-714c-4b68-b97e-3f31e18053d2" -> obj(),
+                "959619ee-30a2-3bc8-9b79-4384b5f3f05d" -> obj()
+              )
+            )
+          ),
+          "unmonitoredHosts" -> obj(
+            "959619ee-30a2-3bc8-9b79-4384b5f3f05d" -> obj(
+              "host" -> fromString("192.168.10.34")
             )
           )
         )

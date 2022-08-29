@@ -19,9 +19,25 @@ object StatsCodecs {
                   monitoredHost.additionalHostnames.map(additionalHostname =>
                     Json.fromString(additionalHostname.toString)
                   )
-                )
+                ),
+                "connections" -> stats
+                  .connectionsFor(monitoredHost.hostId)
+                  .fold(Json.obj())(hostIdsToConnections => {
+                    Json.fromFields(
+                      hostIdsToConnections.map[(String, Json)]((hostId, _) => {
+                        hostId.uuid.toString -> Json.obj()
+                      })
+                    )
+                  })
               )
             )
+        ),
+        "unmonitoredHosts" -> Json.fromFields(
+          stats.unidentifiedRemoteHosts.map(unidentifiedRemoteHost => {
+            unidentifiedRemoteHost.hostId.uuid.toString -> Json.obj(
+              "host" -> Json.fromString(unidentifiedRemoteHost.host.toString)
+            )
+          })
         )
       )
 

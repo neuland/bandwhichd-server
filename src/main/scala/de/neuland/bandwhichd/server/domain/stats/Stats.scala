@@ -31,6 +31,13 @@ class Stats[L <: HostId, H <: AnyHost[L], R <: HostId] private (
       }
     }.toSet
 
+  def connectionsFor(hostId: L): Option[Map[R, Stats.Connection]] =
+    bundles
+      .get(hostId)
+      .map(bundle =>
+        bundle.connections.view.mapValues(_ => Stats.Connection()).toMap
+      )
+
   def dropBefore(timestamp: Timing.Timestamp): Stats[L, H, R] =
     new Stats(
       bundles
@@ -185,6 +192,8 @@ object Stats {
     def allHosts: Set[AnyHost[HostId]] =
       stats.hosts ++ stats.unidentifiedRemoteHosts
   }
+
+  case class Connection()
 
   private[Stats] case class Bundle[L <: HostId, H <: AnyHost[L], R <: HostId](
       host: H,
