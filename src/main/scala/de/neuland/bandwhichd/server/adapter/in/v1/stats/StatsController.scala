@@ -6,9 +6,7 @@ import cats.implicits.*
 import de.neuland.bandwhichd.server.application.StatsApplicationService
 import de.neuland.bandwhichd.server.domain.measurement.Timing
 import de.neuland.bandwhichd.server.domain.stats.*
-import de.neuland.bandwhichd.server.lib.dot.Dot
 import de.neuland.bandwhichd.server.lib.http4s.Helpers
-import de.neuland.bandwhichd.server.lib.http4s.dot.DotHttp4s
 import de.neuland.bandwhichd.server.lib.time.cats.TimeContext
 import io.circe.Json
 import io.circe.syntax.*
@@ -40,53 +38,10 @@ class StatsController[F[_]: Async](
       response <- {
         val statsWithinMonitoredNetworks: MonitoredStats =
           monitoredStats.withoutHostsOutsideOfMonitoredNetworks
-        if (useDotInsteadOfJson(request.headers)) {
-          import de.neuland.bandwhichd.server.lib.http4s.dot.DotHttp4s.dotEntityEncoder
-          val dot: Dot = StatsCodecs.dotEncoder(statsWithinMonitoredNetworks)
-          Ok(dot)
-        } else {
-          import org.http4s.circe.CirceEntityEncoder.circeEntityEncoder
-          val json: Json =
-            statsWithinMonitoredNetworks.asJson(StatsCodecs.circeEncoder)
-          Ok(json)
-        }
+        import org.http4s.circe.CirceEntityEncoder.circeEntityEncoder
+        val json: Json =
+          statsWithinMonitoredNetworks.asJson(StatsCodecs.encoder)
+        Ok(json)
       }
     } yield response
-
-  private def useDotInsteadOfJson(headers: Headers) = {
-    val maybeAcceptHeader: Option[Accept] =
-      headers.get(
-        Header.Select.recurringHeadersWithMerge(
-          org.http4s.headers.Accept.headerSemigroupInstance,
-          org.http4s.headers.Accept.headerInstance
-        )
-      )
-
-    maybeAcceptHeader.fold(false) { acceptHeader =>
-
-      val mediaRangeAndQValues: NonEmptyList[MediaRangeAndQValue] =
-        acceptHeader.values
-
-      val maybeDotMediaRangeAndQValue: Option[MediaRangeAndQValue] =
-        mediaRangeAndQValues.find { mediaRangeAndQValue =>
-          DotHttp4s.mediaType.satisfiedBy(mediaRangeAndQValue.mediaRange)
-        }
-
-      maybeDotMediaRangeAndQValue.fold(false) { dotMediaRangeAndQValue =>
-
-        val maybeJsonMediaRangeAndQValue =
-          mediaRangeAndQValues.find { mediaRangeAndQValue =>
-            MediaType.application.json.satisfiedBy(
-              mediaRangeAndQValue.mediaRange
-            )
-          }
-
-        maybeJsonMediaRangeAndQValue.fold(true) { jsonMediaRangeAndQValue =>
-          dotMediaRangeAndQValue.qValue.compare(
-            jsonMediaRangeAndQValue.qValue
-          ) >= 0
-        }
-      }
-    }
-  }
 }

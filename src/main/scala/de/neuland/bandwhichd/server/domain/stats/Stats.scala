@@ -7,7 +7,6 @@ import de.neuland.bandwhichd.server.domain.measurement.{Measurement, Timing}
 import de.neuland.bandwhichd.server.domain.stats.Stats.Bundle
 import de.neuland.bandwhichd.server.lib.time.Interval
 import de.neuland.bandwhichd.server.lib.time.cats.TimeContext
-import fs2.Stream
 
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.temporal.ChronoUnit.HOURS

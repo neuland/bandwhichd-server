@@ -258,7 +258,7 @@ class BandwhichdServerApiV1Spec
       }
     }
 
-    "have JSON stats" in {
+    "have stats" in {
       // given
       val request = Request[IO](
         method = Method.GET,
@@ -315,59 +315,7 @@ class BandwhichdServerApiV1Spec
       }
     }
 
-    "have DOT stats" in {
-      // given
-      val request = Request[IO](
-        method = Method.GET,
-        uri = uri"/v1/stats",
-        headers = Headers(
-          Header.Raw(
-            ci"accept",
-            "application/json; q=0.8, text/vnd.graphviz; q=0.9"
-          ),
-          Header.Raw(
-            ci"origin",
-            "http://localhost:3000"
-          )
-        )
-      )
-
-      val app = inMemoryApp[IO](
-        fixedTimeContext(MeasurementFixtures.fullTimeframe.end.instant),
-        configuration
-      )
-      val httpApp = app.httpApp
-
-      for {
-        _ <- app.measurementApplicationService.record(
-          MeasurementFixtures.exampleNetworkConfigurationMeasurement
-        )
-        _ <- app.measurementApplicationService.record(
-          MeasurementFixtures.exampleNetworkUtilizationMeasurement
-        )
-
-        // when
-        result <- httpApp.run(request)
-
-        // then
-        body <- result.body.through(fs2.text.utf8.decode).compile.string
-      } yield {
-        result.status shouldBe Ok
-        result.headers.headers should contain allOf (
-          Header.Raw(ci"access-control-allow-origin", "*"),
-          Header.Raw(ci"content-type", "text/vnd.graphviz; charset=UTF-8")
-        )
-        body shouldBe
-          """digraph {
-            |    "c414c2da-714c-4b68-b97e-3f31e18053d2" [label="some-host.example.com"];
-            |    "959619ee-30a2-3bc8-9b79-4384b5f3f05d" [label="192.168.10.34"];
-            |    "c414c2da-714c-4b68-b97e-3f31e18053d2" -> "c414c2da-714c-4b68-b97e-3f31e18053d2";
-            |    "c414c2da-714c-4b68-b97e-3f31e18053d2" -> "959619ee-30a2-3bc8-9b79-4384b5f3f05d";
-            |}""".stripMargin
-      }
-    }
-
-    "have DOT stats filtered by time" in {
+    "have stats filtered by time" in {
       // given
       val timeframeDataset = MeasurementFixtures.TimeframeDataset.gen()
       val from = timeframeDataset.cutoffTimestamp.instant
@@ -376,10 +324,6 @@ class BandwhichdServerApiV1Spec
         method = Method.GET,
         uri = Uri.unsafeFromString(s"/v1/stats?from=$from&to=$to"),
         headers = Headers(
-          Header.Raw(
-            ci"accept",
-            "application/json; q=0.8, text/vnd.graphviz; q=0.9"
-          ),
           Header.Raw(
             ci"origin",
             "http://localhost:3000"
@@ -407,16 +351,33 @@ class BandwhichdServerApiV1Spec
         result.status shouldBe Ok
         result.headers.headers should contain allOf (
           Header.Raw(ci"access-control-allow-origin", "*"),
-          Header.Raw(ci"content-type", "text/vnd.graphviz; charset=UTF-8")
+          Header.Raw(ci"content-type", "application/json")
         )
-        body shouldBe
-          s"""digraph {
-            |    "${timeframeDataset.hostId0.uuid}" [label="${timeframeDataset.nc.hostname}"];
-            |    "${timeframeDataset.hostId2.uuid}" [label="${timeframeDataset.con2.remoteSocket.value.host}"];
-            |    "${timeframeDataset.hostId3.uuid}" [label="${timeframeDataset.con3.remoteSocket.value.host}"];
-            |    "${timeframeDataset.hostId0.uuid}" -> "${timeframeDataset.hostId2.uuid}";
-            |    "${timeframeDataset.hostId0.uuid}" -> "${timeframeDataset.hostId3.uuid}";
-            |}""".stripMargin
+        val jsonBody = io.circe.parser.parse(body).toTry.get
+        jsonBody shouldBe obj(
+          "hosts" -> obj(
+            timeframeDataset.hostId0.uuid.toString -> obj(
+              "hostname" -> fromString(timeframeDataset.nc.hostname.toString),
+              "additional_hostnames" -> arr(),
+              "connections" -> obj(
+                timeframeDataset.hostId2.uuid.toString -> obj(),
+                timeframeDataset.hostId3.uuid.toString -> obj()
+              )
+            )
+          ),
+          "unmonitoredHosts" -> obj(
+            timeframeDataset.hostId2.uuid.toString -> obj(
+              "host" -> fromString(
+                timeframeDataset.con2.remoteSocket.value.host.toString
+              )
+            ),
+            timeframeDataset.hostId3.uuid.toString -> obj(
+              "host" -> fromString(
+                timeframeDataset.con3.remoteSocket.value.host.toString
+              )
+            )
+          )
+        )
       }
     }
   }
