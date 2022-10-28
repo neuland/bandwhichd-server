@@ -14,6 +14,7 @@ import fs2.Stream
 import org.scalacheck.Gen
 import org.scalatest.Assertion
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.OptionValues
 import org.scalatest.wordspec.{AnyWordSpec, AsyncWordSpec}
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 
@@ -23,7 +24,8 @@ import java.util.UUID
 class StatsSpec
     extends AnyWordSpec
     with ScalaCheckDrivenPropertyChecks
-    with Matchers {
+    with Matchers
+    with OptionValues {
   "Stats" when {
     "empty" should {
       "append configuration" in {
@@ -37,6 +39,7 @@ class StatsSpec
           result.hosts should contain(
             MonitoredHost(
               hostId = HostId(nc.machineId),
+              maybeOsRelease = nc.maybeOsRelease.map(OsRelease.apply),
               hostname = nc.hostname,
               additionalHostnames = Set.empty,
               interfaces = nc.interfaces.toSet
@@ -71,6 +74,15 @@ class StatsSpec
           timing = Timing.Timestamp(
             ZonedDateTime.parse("2022-05-18T18:09:50.34957395Z")
           ),
+          maybeOsRelease = OsRelease
+            .FileContents(
+              """ID=id
+                |VERSION_ID="version_id"
+                |#VERSION_ID="wrong_version_id"
+                |  #  PRETTY_NAME   =     "<wrong-pretty-name>"  
+                | PRETTY_NAME   =     "<pretty-name>"  """.stripMargin
+            )
+            .some,
           hostname = Hostname.fromString("some-host.example.com").get,
           interfaces = Seq.empty,
           openSockets = Seq.empty
@@ -85,6 +97,16 @@ class StatsSpec
         result.hosts should have size 1
         result.hosts.head.hostId shouldBe HostId(
           MachineId(UUID.fromString("a814d0d9-3dca-4acf-985f-442dd4262228"))
+        )
+      }
+
+      "have an os release" in {
+        // then
+        result.hosts should have size 1
+        result.hosts.head.maybeOsRelease.value shouldBe OsRelease(
+          maybeId = OsRelease.Id("id").some,
+          maybeVersionId = OsRelease.VersionId("version_id").some,
+          maybePrettyName = OsRelease.PrettyName("<pretty-name>").some
         )
       }
 
@@ -107,6 +129,7 @@ class StatsSpec
           timing = Timing.Timestamp(
             ZonedDateTime.parse("2022-05-18T18:09:50.34957395Z")
           ),
+          maybeOsRelease = None,
           hostname = Hostname.fromString("some-host.example.com").get,
           interfaces = Seq.empty,
           openSockets = Seq.empty
@@ -117,6 +140,7 @@ class StatsSpec
           timing = Timing.Timestamp(
             ZonedDateTime.parse("2022-05-18T18:09:50.34957395Z")
           ),
+          maybeOsRelease = None,
           hostname = Hostname.fromString("some-host.example.com").get,
           interfaces = Seq.empty,
           openSockets = Seq.empty
@@ -147,6 +171,7 @@ class StatsSpec
           timing = Timing.Timestamp(
             ZonedDateTime.parse("2022-05-18T18:10:50.34957395Z")
           ),
+          maybeOsRelease = None,
           hostname = Hostname.fromString("another-host.example.com").get,
           interfaces = Seq.empty,
           openSockets = Seq.empty
@@ -157,6 +182,7 @@ class StatsSpec
           timing = Timing.Timestamp(
             ZonedDateTime.parse("2022-05-18T18:09:50.34957395Z")
           ),
+          maybeOsRelease = None,
           hostname = Hostname.fromString("some-host.example.com").get,
           interfaces = Seq.empty,
           openSockets = Seq.empty
@@ -227,6 +253,7 @@ class StatsSpec
         Measurement.NetworkConfiguration(
           machineId = machineId1,
           timing = start1,
+          maybeOsRelease = None,
           hostname = hostname1,
           interfaces = Seq(
             Interface(
@@ -248,6 +275,7 @@ class StatsSpec
         Measurement.NetworkConfiguration(
           machineId = machineId2,
           timing = start2,
+          maybeOsRelease = None,
           hostname = hostname2,
           interfaces = Seq(
             Interface(

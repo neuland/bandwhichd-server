@@ -57,9 +57,10 @@ object Message {
       } yield message
 
   given Codec[Measurement.NetworkConfiguration] =
-    Codec.forProduct5(
+    Codec.forProduct6(
       "machine_id",
       "timestamp",
+      "maybe_os_release",
       "hostname",
       "interfaces",
       "open_sockets"
@@ -67,6 +68,7 @@ object Message {
       (
         nc.machineId,
         nc.timing,
+        nc.maybeOsRelease,
         nc.hostname,
         nc.interfaces,
         nc.openSockets
@@ -157,6 +159,9 @@ object Message {
   given Decoder[InterfaceName] = Decoder[String].map(InterfaceName.apply)
   given Encoder[MachineId] = Encoder[UUID].contramap(_.value)
   given Decoder[MachineId] = Decoder[UUID].map(MachineId.apply)
+  given Encoder[OsRelease.FileContents] = Encoder[String].contramap(_.value)
+  given Decoder[OsRelease.FileContents] =
+    Decoder[String].map(OsRelease.FileContents.apply)
   given Encoder[ProcessName] = Encoder[String].contramap(_.value)
   given Decoder[ProcessName] = Decoder[String].map(ProcessName.apply)
   given Encoder[Protocol] = Encoder[String].contramap(_ match

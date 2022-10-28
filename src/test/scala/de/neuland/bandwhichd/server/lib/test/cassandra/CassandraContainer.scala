@@ -16,7 +16,7 @@ case class CassandraContainer(
 
 object CassandraContainer {
   val defaultImageName: DockerImageName =
-    DockerImageName.parse("cassandra:4.0.4")
+    DockerImageName.parse("cassandra:4.1")
 
   val defaultImageCqlPort: Port =
     Port.fromInt(9042).get

@@ -17,6 +17,11 @@ object MeasurementFixtures {
         MachineId(UUID.fromString("c414c2da-714c-4b68-b97e-3f31e18053d2")),
       timing =
         Timing.Timestamp(ZonedDateTime.parse("2022-05-06T15:14:51.742Z")),
+      maybeOsRelease = Some(
+        OsRelease.FileContents(
+          "PRETTY_NAME=\"Debian GNU/Linux 11 (bullseye)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"11\"\nVERSION=\"11 (bullseye)\"\nVERSION_CODENAME=bullseye\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\""
+        )
+      ),
       hostname = Hostname.fromString("some-host.example.com").get,
       interfaces = Seq(
         Interface(
@@ -234,6 +239,7 @@ object MeasurementFixtures {
         .ncGen()
         .copy(
           hostname = host"host0",
+          maybeOsRelease = None,
           interfaces = Seq(
             Interface(
               name = InterfaceName("eth0"),

@@ -298,6 +298,11 @@ class BandwhichdServerApiV1Spec
         jsonBody shouldBe obj(
           "hosts" -> obj(
             "c414c2da-714c-4b68-b97e-3f31e18053d2" -> obj(
+              "os_release" -> obj(
+                "pretty_name" -> fromString("Debian GNU/Linux 11 (bullseye)"),
+                "version_id" -> fromString("11"),
+                "id" -> fromString("debian")
+              ),
               "hostname" -> fromString("some-host.example.com"),
               "additional_hostnames" -> arr(),
               "connections" -> obj(

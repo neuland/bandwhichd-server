@@ -17,12 +17,13 @@ import scala.util.Try
 
 object MeasurementCassandraCodecs {
   given Codec[Measurement[Timing]] =
-    Codec.forProduct9(
+    Codec.forProduct10(
       "date",
       "timestamp",
       "end_timestamp",
       "machine_id",
       "measurement_type",
+      "network_configuration_maybe_os_release",
       "network_configuration_hostname",
       "network_configuration_interfaces",
       "network_configuration_open_sockets",
@@ -34,6 +35,7 @@ object MeasurementCassandraCodecs {
           endTimestamp: Timing.Timestamp,
           machineId: MachineId,
           measurementType: String,
+          maybeOsRelease: String,
           hostname: Hostname,
           interfaces: Seq[Interface],
           openSockets: Seq[OpenSocket],
@@ -44,6 +46,7 @@ object MeasurementCassandraCodecs {
             Measurement.NetworkConfiguration(
               machineId = machineId,
               timing = timestamp,
+              maybeOsRelease = Some(OsRelease.FileContents(maybeOsRelease)),
               hostname = hostname,
               interfaces = interfaces,
               openSockets = openSockets
@@ -68,6 +71,7 @@ object MeasurementCassandraCodecs {
       case Measurement.NetworkConfiguration(
             machineId,
             timing,
+            maybeOsRelease,
             hostname,
             interfaces,
             openSockets
@@ -78,6 +82,7 @@ object MeasurementCassandraCodecs {
           Timing.Timestamp(Instant.EPOCH),
           machineId,
           "network_configuration",
+          maybeOsRelease.fold("")(_.value),
           hostname,
           interfaces,
           openSockets,
@@ -94,6 +99,7 @@ object MeasurementCassandraCodecs {
           Timing.Timestamp(timing.value.normalizedStop),
           machineId,
           "network_utilization",
+          "",
           Hostname.fromString("a").get,
           Seq.empty[Interface],
           Seq.empty[OpenSocket],

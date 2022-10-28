@@ -11,11 +11,24 @@ class CassandraMigration[F[_]: Async](
 ) {
   def migrate(configuration: Configuration): F[Unit] =
     for {
+      _ <- migrateV1(configuration)
+      _ <- migrateV2(configuration)
+    } yield ()
+
+  def migrateV1(configuration: Configuration): F[Unit] =
+    for {
       _ <- createCidrType(configuration)
       _ <- createMeasurementNetworkConfigurationInterfaceType(configuration)
       _ <- createMeasurementNetworkConfigurationOpenSocketType(configuration)
       _ <- createMeasurementNetworkUtilizationConnectionType(configuration)
       _ <- createMeasurementsTable(configuration)
+    } yield ()
+
+  def migrateV2(configuration: Configuration): F[Unit] =
+    for {
+      _ <- addNetworkConfigurationMaybeOrReleaseToMeasurementsTable(
+        configuration
+      )
     } yield ()
 
   private def createMeasurementsTable(
@@ -106,6 +119,19 @@ class CassandraMigration[F[_]: Async](
             |  address inet,
             |  prefix_bits smallint,
             |)""".stripMargin
+        )
+        .setKeyspace(configuration.measurementsKeyspace)
+        .setTimeout(configuration.migrationQueryTimeout)
+        .build()
+    )
+
+  private def addNetworkConfigurationMaybeOrReleaseToMeasurementsTable(
+      configuration: Configuration
+  ): F[Unit] =
+    cassandraContext.executeRawExpectNoRow(
+      SimpleStatement
+        .builder(
+          "alter table measurements_by_date add if not exists network_configuration_maybe_os_release text"
         )
         .setKeyspace(configuration.measurementsKeyspace)
         .setTimeout(configuration.migrationQueryTimeout)

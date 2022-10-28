@@ -49,6 +49,14 @@ object Arbitraries {
     .oneOf("enp0s31f6", "lo", "virbr0", "tun0", "wlp3s0")
     .map(InterfaceName.apply)
   given Gen[MachineId] = Gen.uuid.map(MachineId.apply)
+  given Gen[OsRelease.FileContents] =
+    Gen
+      .oneOf(
+        "PRETTY_NAME=\"Debian GNU/Linux 11 (bullseye)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"11\"\nVERSION=\"11 (bullseye)\"\nVERSION_CODENAME=bullseye\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"",
+        "NAME=\"SLES\"\nVERSION=\"15-SP3\"\nVERSION_ID=\"15.3\"\nPRETTY_NAME=\"SUSE Linux Enterprise Server 15 SP3\"\nID=\"sles\"\nID_LIKE=\"suse\"\nANSI_COLOR=\"0;32\"\nCPE_NAME=\"cpe:/o:suse:sles:15:sp3\"\nDOCUMENTATION_URL=\"https://documentation.suse.com/\"",
+        "PRETTY_NAME=\"Debian GNU/Linux 8 (jessie)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"8\"\nVERSION=\"8 (jessie)\"\nID=debian\nHOME_URL=\"http://www.debian.org/\"\nSUPPORT_URL=\"http://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\""
+      )
+      .map(OsRelease.FileContents.apply)
   given Gen[ProcessName] =
     Gen
       .oneOf("dhclient", "java", "dnsmasq", "cupsd", "systemd-resolv")
@@ -118,6 +126,7 @@ object Arbitraries {
   given Gen[Measurement.NetworkConfiguration] = for {
     machineId <- summon[Gen[MachineId]]
     timestamp <- summon[Gen[Timing.Timestamp]]
+    maybeOsRelease <- Gen.option(summon[Gen[OsRelease.FileContents]])
     hostname <- Ip4sArbitraries.hostnameGenerator
     numberOfInterfaces <- Gen.chooseNum(1, 4)
     interfaces <- Gen.listOfN(numberOfInterfaces, summon[Gen[Interface]])
@@ -126,6 +135,7 @@ object Arbitraries {
   } yield Measurement.NetworkConfiguration(
     machineId = machineId,
     timing = timestamp,
+    maybeOsRelease = maybeOsRelease,
     hostname = hostname,
     interfaces = interfaces,
     openSockets = openSockets

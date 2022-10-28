@@ -16,6 +16,7 @@ object Measurement {
   case class NetworkConfiguration(
       machineId: MachineId,
       timing: Timing.Timestamp,
+      maybeOsRelease: Option[OsRelease.FileContents],
       hostname: Hostname,
       interfaces: Seq[Interface],
       openSockets: Seq[OpenSocket]

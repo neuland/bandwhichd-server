@@ -3,6 +3,7 @@
   "content": {
     "machine_id": "c414c2da-714c-4b68-b97e-3f31e18053d2",
     "timestamp": "2022-05-06T15:14:51.742Z",
+    "maybe_os_release": "PRETTY_NAME=\"Debian GNU/Linux 11 (bullseye)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"11\"\nVERSION=\"11 (bullseye)\"\nVERSION_CODENAME=bullseye\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"",
     "hostname": "some-host.example.com",
     "interfaces": [
       {

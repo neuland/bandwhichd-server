@@ -70,6 +70,7 @@ object Stats {
         case Measurement.NetworkConfiguration(
               machineId,
               timing,
+              maybeOsRelease,
               hostname,
               interfaces,
               _
@@ -88,6 +89,7 @@ object Stats {
             Stats.Bundle(
               host = MonitoredHost(
                 hostId = hostId,
+                maybeOsRelease = maybeOsRelease.map(_.parse),
                 hostname = hostname,
                 additionalHostnames = Set.empty,
                 interfaces = interfaces.toSet
@@ -99,6 +101,7 @@ object Stats {
             bundle.copy(
               host = MonitoredHost(
                 hostId = hostId,
+                maybeOsRelease = maybeOsRelease.map(_.parse),
                 hostname = hostname,
                 additionalHostnames = bundle.host.hostnames - hostname,
                 interfaces = bundle.host.interfaces ++ interfaces

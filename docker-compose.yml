@@ -14,7 +14,7 @@
 
 services:
   cassandra:
-    image: cassandra:4.0.4
+    image: cassandra:4.1
     ports:
       - 9042:9042
   bandwhichd-server:
